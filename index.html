@@ -367,14 +367,22 @@
     </style>
 
     <script>
-      (function () {
-        const hash = window.location.hash;
-        if (hash && hash.includes("access_token=") && hash.includes("type=")) {
-          document.documentElement.style.display = "none";
-          window.location.href = "app.html" + hash;
-        }
-      })();
-    </script>
+  (function () {
+    const hash = window.location.hash;
+    // Detectamos si es un link de Supabase
+    if (hash && hash.includes("access_token=") && hash.includes("type=")) {
+      // Ocultamos para evitar parpadeos
+      document.documentElement.style.display = "none";
+      
+      // CORRECCIÓN: Aseguramos que no haya doble #
+      // Quitamos el primer caracter (#) del hash actual para pegarlo limpio
+      const cleanHash = hash.substring(1); 
+      
+      // Redirigimos a app.html con UN solo #
+      window.location.href = "app.html#" + cleanHash;
+    }
+  })();
+</script>
   </head>
 
   <body class="index-page">
