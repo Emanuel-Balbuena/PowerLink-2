@@ -19,7 +19,7 @@ export const api = {
 
         // NUEVO: Enviar correo de recuperación
         recoverPassword: (email) => supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.href // Redirige a la misma app para poner el nuevo pass
+            redirectTo: window.location.origin // Redirige a la misma app para poner el nuevo pass
         }),
 
         // NUEVO: Actualizar contraseña (usado en Perfil y en Recuperación)

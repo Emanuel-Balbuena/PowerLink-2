@@ -1,6 +1,7 @@
 /**
  * js/router.js
- * Manejador de navegación (Versión BLINDADA para Auth)
+ * Manejador de navegación
+ * Versión: FIX ## Doble Hash en Reset Password
  */
 import { renderDashboard } from "./views/dashboard.js";
 import { renderDevices } from "./views/devices.js";
@@ -15,44 +16,59 @@ export async function handleRouting() {
   const appContent = document.getElementById("app-content");
   if (!appContent) return;
 
-  // 1. OBTENER HASH ACTUAL
-  let fullHash = window.location.hash;
-  if (fullHash.startsWith("##")) fullHash = fullHash.substring(1);
-  const cleanHash = fullHash.slice(1); // Quitar el #
+  // 1. LIMPIEZA AGRESIVA DE DOBLE HASH (##)
+  // Obtenemos el hash y quitamos TODOS los # del principio para dejarlo limpio
+  let currentHash = window.location.hash || "";
+  const cleanHashParams = currentHash.replace(/^#+/, ""); // "access_token=..."
 
-  // 2. DETECTAR TOKENS DE SUPABASE (Primera carga)
+  // 2. DETECTAR TOKENS (Reset Password o Verify)
   const isTokenHash =
-    cleanHash.includes("access_token=") && cleanHash.includes("type=");
+    cleanHashParams.includes("access_token=") &&
+    cleanHashParams.includes("type=");
 
   if (isTokenHash) {
-    // Si hay token, extraemos el tipo por seguridad, pero confiamos más en LocalStorage
-    // Limpiamos la URL visualmente
-    const pendingAction = localStorage.getItem("auth_pending_action");
-    let nextHash = "#dashboard";
+    // --- CORRECCIÓN: Llenar memoria si viene vacío ---
+    // Si el usuario entró directo a app.html, index.html no corrió y localStorage puede estar vacío.
+    // Lo detectamos aquí mismo.
+    let pendingAction = localStorage.getItem("auth_pending_action");
 
+    if (!pendingAction) {
+      if (cleanHashParams.includes("type=recovery")) {
+        pendingAction = "recovery";
+        localStorage.setItem("auth_pending_action", "recovery");
+      } else if (cleanHashParams.includes("type=signup")) {
+        // (Esto protege verifyEmail por si acaso)
+        pendingAction = "signup";
+        localStorage.setItem("auth_pending_action", "signup");
+      }
+    }
+
+    // Definir el destino limpio
+    let nextHash = "#dashboard";
     if (pendingAction === "recovery") nextHash = "#reset-password";
     if (pendingAction === "signup") nextHash = "#verify-email";
 
+    // Limpiar la URL visualmente (Quitamos el token feo)
     window.history.replaceState(null, "", window.location.pathname + nextHash);
-    fullHash = nextHash; // Actualizamos variable local
+
+    // Actualizamos la variable local para usarla abajo inmediatamente
+    currentHash = nextHash;
   }
 
-  // 3. LÓGICA DE PRIORIDAD (PERSISTENCIA)
-  // Si el hash es vacío o dashboard, verificamos si hay una acción pendiente en memoria.
-  // Esto arregla el problema cuando Supabase borra la URL.
-  let finalHash =
-    fullHash && fullHash !== "#" && fullHash !== "##" ? fullHash : "#dashboard";
+  // 3. LÓGICA DE PRIORIDAD (Persistencia)
+  // Normalizamos el hash final con un solo #
+  let finalHash = currentHash.startsWith("#") ? currentHash : "#" + currentHash;
+  if (finalHash === "#" || finalHash === "") finalHash = "#dashboard";
 
+  // Recuperar intención de la memoria si estamos en dashboard por error
   const storedAction = localStorage.getItem("auth_pending_action");
 
-  if ((finalHash === "#dashboard" || finalHash === "") && storedAction) {
-    console.log(
-      `🧠 Memoria activada: Sobreescribiendo Dashboard con ${storedAction}`
-    );
+  if (finalHash === "#dashboard" && storedAction) {
+    console.log(`🧠 Router: Redirigiendo por memoria a ${storedAction}`);
     if (storedAction === "recovery") finalHash = "#reset-password";
     if (storedAction === "signup") finalHash = "#verify-email";
 
-    // Forzamos la URL visual para que coincida
+    // Forzar URL visual
     window.history.replaceState(null, "", window.location.pathname + finalHash);
   }
 
@@ -65,21 +81,12 @@ export async function handleRouting() {
       await renderResetPassword(appContent);
     } else if (finalHash.startsWith("#verify-email")) {
       await renderVerifyEmail(appContent);
-      // Opcional: Limpiar la memoria una vez renderizado exitosamente
-      // localStorage.removeItem('auth_pending_action');
-      // (Mejor hacerlo al hacer click en "Ir a Login" para asegurar que lo vea)
     } else if (finalHash === "#dashboard") {
-      // Seguridad extra: Si llegamos aquí, limpiamos cualquier acción pendiente vieja
-      // para no atrapar al usuario.
+      // Seguridad: Si renderizamos dashboard, limpiamos acciones viejas
+      // para no atrapar al usuario en el futuro.
       if (!storedAction) await renderDashboard(appContent);
-      else {
-        // Si había acción pero por error caímos aquí, forzamos recarga de router
-        // (Caso borde, pero ayuda)
-      }
-      await renderDashboard(appContent);
-    }
-    // ... RESTO DE TUS RUTAS (Devices, Groups, Settings, etc.) ...
-    else if (finalHash === "#devices") {
+      else await renderDashboard(appContent);
+    } else if (finalHash === "#devices") {
       await renderDevices(appContent);
     } else if (finalHash.startsWith("#devices/")) {
       const id = finalHash.split("/")[1];
@@ -102,9 +109,7 @@ export async function handleRouting() {
 
 function updateActiveNav(hash) {
   const links = document.querySelectorAll(".navmenu a");
-  // Ignorar si es un token
   if (hash.includes("access_token=")) return;
-
   links.forEach((link) => link.classList.remove("active"));
   links.forEach((link) => {
     const href = link.getAttribute("href");
