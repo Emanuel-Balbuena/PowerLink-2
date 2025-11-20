@@ -1,7 +1,7 @@
 /**
  * js/app.js
  * Lógica central: Auth, Navegación y Notificaciones
- * Versión: Final (Corrección UI Standalone + Fix Reset Password)
+ * Versión: Final (Adaptado a tu HTML específico)
  */
 import { api } from "./api.js";
 import { handleRouting } from "./router.js";
@@ -16,9 +16,7 @@ let isAppInitialized = false;
 
 function init() {
   // 1. FIX DE EMERGENCIA PARA DOBLE HASH (##)
-  // Si el link llega roto (##access_token), lo arreglamos antes de que nadie se de cuenta.
   if (window.location.hash.startsWith("##")) {
-    console.log("🔧 Corrigiendo hash doble...");
     const clean = window.location.hash.substring(1);
     window.history.replaceState(null, "", window.location.pathname + clean);
   }
@@ -39,10 +37,7 @@ function init() {
       if (event === "PASSWORD_RECOVERY") {
         localStorage.setItem("auth_pending_action", "recovery");
         window.location.hash = "#reset-password";
-
-        // Forzamos modo standalone inmediatamente
         updateShellMode(true);
-
         handleRouting();
         return;
       }
@@ -62,7 +57,7 @@ function init() {
       }
       if (appShell) appShell.classList.remove("d-none");
 
-      // --- LÓGICA DE MODO STANDALONE (Sin Shell) ---
+      // --- LÓGICA DE MODO STANDALONE ---
       const pendingAction = localStorage.getItem("auth_pending_action");
       const currentHash = window.location.hash;
 
@@ -95,7 +90,6 @@ function init() {
       }
       if (appShell) appShell.classList.add("d-none");
 
-      // Asegurar que el shell esté visible por si vuelve al login
       updateShellMode(false);
       stopNotificationService();
     }
@@ -103,12 +97,10 @@ function init() {
 
   // Listener para cambios manuales
   window.addEventListener("hashchange", () => {
-    // FIX: Verificar ## también al navegar manualmente
     if (window.location.hash.startsWith("##")) {
       window.location.hash = window.location.hash.substring(1);
-      return; // El cambio de hash disparará el evento de nuevo
+      return;
     }
-
     const currentHash = window.location.hash;
     const isStandalone =
       currentHash.includes("verify-email") ||
@@ -123,26 +115,26 @@ function init() {
 
 // --- FUNCIÓN PARA SACAR VISTAS DEL SHELL (MODO NUCLEAR) ---
 function updateShellMode(isStandalone) {
-  // Seleccionamos TODO lo que pueda molestar
+  // Aquí seleccionamos EXACTAMENTE tus elementos del HTML
   const elementsToHide = [
     document.getElementById("header"), // Sidebar
-    document.querySelector(".header-toggle"), // Botón móvil
-    document.querySelector(".btn-notif-floating"), // Botones flotantes extras
-    document.getElementById("footer"), // Footer si existe
+    document.querySelector(".header-toggle"), // Botón Hamburguesa
+    document.querySelector(".top-controls"), // <--- TU CONTENEDOR SUPERIOR
+    document.querySelector(".btn-floating-notify"), // <--- TU BOTÓN ESPECÍFICO
   ];
 
   elementsToHide.forEach((el) => {
     if (el) {
-      // Usamos setProperty con 'important' para vencer al CSS de Bootstrap/Template
       if (isStandalone) {
+        // Usamos !important para asegurarnos que ni el CSS gane
         el.style.setProperty("display", "none", "important");
       } else {
-        el.style.removeProperty("display"); // Restaurar comportamiento original
+        el.style.removeProperty("display");
       }
     }
   });
 
-  // Clase en el body para CSS global si hace falta
+  // Clase global
   if (isStandalone) {
     document.body.classList.add("standalone-view");
   } else {
@@ -150,12 +142,8 @@ function updateShellMode(isStandalone) {
   }
 }
 
-// --- 1. LÓGICA DE FORMULARIOS (LOGIN/REGISTRO) ---
+// --- 1. LÓGICA DE FORMULARIOS ---
 function setupAuthForms() {
-  // Nota: He eliminado la sección de Reset Password de aquí.
-  // Esa lógica pertenece EXCLUSIVAMENTE a js/views/resetPassword.js
-  // porque el formulario no existe al cargar la página inicial.
-
   // A) LOGIN
   const loginForm = document.getElementById("login-form");
   if (loginForm) {
@@ -216,7 +204,7 @@ function setupAuthForms() {
     });
   }
 
-  // C) SOLICITUD DE RECUPERACIÓN (Forgot Password)
+  // C) SOLICITUD DE RECUPERACIÓN
   const forgotForm = document.getElementById("forgot-password-form");
   if (forgotForm) {
     forgotForm.addEventListener("submit", async (e) => {
@@ -281,8 +269,7 @@ function setupPasswordToggles() {
 // --- 3. MENÚ MÓVIL ---
 function setupMobileNav() {
   const mobileNavToggleBtn = document.querySelector(".header-toggle");
-
-  // Verificamos si existe Y si está visible (no oculto por updateShellMode)
+  // Listener solo si el botón está visible
   if (
     mobileNavToggleBtn &&
     mobileNavToggleBtn.style.display !== "none" &&
