@@ -369,17 +369,15 @@
     <script>
       (function () {
         const hash = window.location.hash;
-        // Detectamos si es un link de Supabase
+        // Solo actuamos si parece un token de supabase
         if (hash && hash.includes("access_token=") && hash.includes("type=")) {
-          // Ocultamos para evitar parpadeos
-          document.documentElement.style.display = "none";
+          document.documentElement.style.display = "none"; // Ocultar para evitar flash
 
-          // CORRECCIÓN: Aseguramos que no haya doble #
-          // Quitamos el primer caracter (#) del hash actual para pegarlo limpio
-          const cleanHash = hash.substring(1);
+          // 1. Quitamos TODOS los # del principio para limpiar "##" o "###"
+          const cleanParams = hash.replace(/^#+/, "");
 
-          // Redirigimos a app.html con UN solo #
-          window.location.href = "app.html#" + cleanHash;
+          // 2. Redirigimos construyendo la URL limpia con UN solo #
+          window.location.href = "app.html#" + cleanParams;
         }
       })();
     </script>
