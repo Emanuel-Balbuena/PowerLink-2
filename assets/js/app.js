@@ -75,7 +75,26 @@ function init() {
       showAppShell();
       isAppInitialized = true;
 
-      handleRouting(); // Dejamos que router decida (probablemente dashboard)
+      // --- 🔥 NUEVO: RED DE SEGURIDAD ---
+      // Si la URL actual YA es 'verify-email' o 'reset-password', PROHIBIDO redirigir al Dashboard.
+      const currentHash = window.location.hash;
+      if (
+        currentHash.includes("verify-email") ||
+        currentHash.includes("reset-password")
+      ) {
+        console.log("🛡️ Vista protegida detectada. Manteniendo:", currentHash);
+
+        handleRouting(); // Renderiza lo que dice la URL (Verify o Reset)
+
+        // Iniciamos los servicios en segundo plano, pero NO cambiamos la vista
+        startNotificationService();
+        setupNotificationListener();
+        setupMobileNav();
+        return; // <--- SALIMOS AQUÍ para que no se ejecute nada más abajo
+      }
+      // -----------------------------------
+
+      handleRouting(); // Si no es vista protegida, el router decidirá (probablemente dashboard)
 
       startNotificationService();
       setupNotificationListener();
