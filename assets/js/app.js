@@ -69,32 +69,77 @@ function init() {
       if (
         isAppInitialized &&
         (event === "INITIAL_SESSION" || event === "SIGNED_IN")
-      )
-        return;
+      ) {
+        // AUNQUE ya esté inicializada, revisamos si Supabase nos robó el hash
+        const currentHash = window.location.hash;
+        if (
+          (currentHash === "" || currentHash === "#dashboard") &&
+          (pendingAction === "signup" || pendingAction === "recovery")
+        ) {
+          // Si estamos en dashboard pero teníamos una acción pendiente, es porque Supabase limpió la URL.
+          // Dejamos continuar hacia abajo para que el Timeout lo arregle.
+        } else {
+          return;
+        }
+      }
 
       showAppShell();
       isAppInitialized = true;
 
-      // --- 🔥 NUEVO: RED DE SEGURIDAD ---
-      // Si la URL actual YA es 'verify-email' o 'reset-password', PROHIBIDO redirigir al Dashboard.
-      const currentHash = window.location.hash;
-      if (
-        currentHash.includes("verify-email") ||
-        currentHash.includes("reset-password")
-      ) {
-        console.log("🛡️ Vista protegida detectada. Manteniendo:", currentHash);
+      // --- 🔥 RED DE SEGURIDAD MEJORADA (EL JAQUE MATE) ---
 
-        handleRouting(); // Renderiza lo que dice la URL (Verify o Reset)
+      // 1. Identificar si estamos en una vista protegida O si deberíamos estarlo (pendingAction)
+      const isProtectedMsg =
+        window.location.hash.includes("verify-email") ||
+        window.location.hash.includes("reset-password");
+      const targetAction = pendingAction; // Guardamos la acción antes de que se pierda
 
-        // Iniciamos los servicios en segundo plano, pero NO cambiamos la vista
+      if (isProtectedMsg || targetAction) {
+        console.log("🛡️ Vista protegida detectada. Asegurando permanencia...");
+
+        // Determinamos cuál debería ser el hash correcto
+        let targetHash = "#verify-email"; // Por defecto
+        if (
+          window.location.hash.includes("reset-password") ||
+          targetAction === "recovery"
+        ) {
+          targetHash = "#reset-password";
+        }
+
+        // 2. Forzamos la vista INMEDIATAMENTE
+        if (window.location.hash !== targetHash) {
+          window.history.replaceState(
+            null,
+            "",
+            window.location.pathname + targetHash
+          );
+          handleRouting();
+        }
+
+        // 3. EL TRUCO MAESTRO: SetTimeout para ganar la carrera a Supabase
+        // Esperamos 800ms. Si Supabase limpia la URL en este tiempo, nosotros la restauramos.
+        setTimeout(() => {
+          // Si la URL cambió a vacía o dashboard, pero nosotros queríamos estar en targetHash...
+          if (window.location.hash !== targetHash) {
+            console.log(
+              "♻️ Supabase limpió la URL. Restaurando hash correcto:",
+              targetHash
+            );
+            window.location.hash = targetHash;
+            // Esto disparará el hashchange y el router lo arreglará automáticamente
+          }
+        }, 800);
+
+        // Iniciamos servicios
         startNotificationService();
         setupNotificationListener();
         setupMobileNav();
-        return; // <--- SALIMOS AQUÍ para que no se ejecute nada más abajo
+
+        return; // IMPORTANTE: Detenemos aquí para que no siga al dashboard
       }
       // -----------------------------------
 
-      handleRouting(); // Si no es vista protegida, el router decidirá (probablemente dashboard)
+      handleRouting();
 
       startNotificationService();
       setupNotificationListener();
