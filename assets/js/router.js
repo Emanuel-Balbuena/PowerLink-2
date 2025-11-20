@@ -18,36 +18,46 @@ export async function handleRouting() {
     const appContent = document.getElementById('app-content');
     if (!appContent) return;
 
-    // Spinner simple
-    appContent.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>';
+    // Spinner simple para indicar carga
+    // appContent.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>';
+    // Comenté el spinner porque a veces causa un "parpadeo" feo si la carga es rápida, pero puedes dejarlo si gustas.
 
     // 1. *** INTERCEPTAR Y PROCESAR TOKENS DE SUPABASE EN EL HASH (#) ***
     const fullHash = window.location.hash.slice(1); 
     const isTokenHash = fullHash.includes('access_token=') && fullHash.includes('type=');
     
     if (isTokenHash) {
-        // console.log("DEBUG: Token hash detectado. Procesando...");
+        console.log("DEBUG: Token hash detectado.");
         
         const urlParams = new URLSearchParams(fullHash); 
         const tokenType = urlParams.get('type');
 
-        // Limpiar la URL ANTES de renderizar, evitando el SyntaxError y la persistencia del token.
-        window.history.replaceState(null, '', window.location.pathname + window.location.search + '#dashboard');
-
-        appContent.innerHTML = ''; 
-
+        // --- CORRECCIÓN CLAVE ---
+        // En lugar de mandar a #dashboard, mandamos a un hash "temporal" 
+        // que corresponda a la acción. Así, si app.js recarga, caerá en el caso correcto.
+        let nextHash = '#dashboard'; 
+        
         if (tokenType === 'recovery') {
-            // console.log("DEBUG: Tipo 'recovery'. Redirigiendo a ResetPassword.");
-            return await renderResetPassword(appContent); 
+            nextHash = '#reset-password';
+        } else if (tokenType === 'signup') {
+            nextHash = '#verify-email';
         }
 
-        if (tokenType === 'signup') {
-             // console.log("DEBUG: Tipo 'signup'. Redirigiendo a VerifyEmail.");
-             return await renderVerifyEmail(appContent); 
-        }
+        // Limpiamos la URL fea del token y ponemos el hash limpio correcto
+        window.history.replaceState(null, '', window.location.pathname + window.location.search + nextHash);
+
+        // Forzamos la ejecución inmediata para no esperar al evento hashchange
+        // (Aunque el replaceState no dispara hashchange, continuamos el flujo abajo)
+        
+        // Actualizamos la variable hash para que el bloque de abajo (Paso 2) lo procese
+        window.location.hash = nextHash;
+        // NOTA: Al asignar window.location.hash, se disparará handleRouting de nuevo.
+        // Por eso hacemos return aquí para dejar que el evento 'hashchange' haga el trabajo
+        // y evitar renderizado doble.
+        return; 
     }
+
     // 2. *** ENRUTAMIENTO NORMAL ***
-    
     const hash = window.location.hash || '#dashboard';
     
     updateActiveNav(hash);
@@ -73,7 +83,15 @@ export async function handleRouting() {
         else if (hash.startsWith('#consent')) {
             await renderConsent(appContent);
         }
-
+        // --- NUEVAS RUTAS PARA MANEJAR LA REDIRECCIÓN ---
+        else if (hash === '#reset-password') {
+            await renderResetPassword(appContent);
+        }
+        else if (hash === '#verify-email') {
+            await renderVerifyEmail(appContent);
+        }
+        // -------------------------------------------------
+        
         // Refrescar animaciones si existen
         if (window.AOS) setTimeout(() => window.AOS.refresh(), 100);
 
