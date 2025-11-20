@@ -367,22 +367,22 @@
     </style>
 
     <script>
-  (function () {
-    const hash = window.location.hash;
-    // Detectamos si es un link de Supabase
-    if (hash && hash.includes("access_token=") && hash.includes("type=")) {
-      // Ocultamos para evitar parpadeos
-      document.documentElement.style.display = "none";
-      
-      // CORRECCIÓN: Aseguramos que no haya doble #
-      // Quitamos el primer caracter (#) del hash actual para pegarlo limpio
-      const cleanHash = hash.substring(1); 
-      
-      // Redirigimos a app.html con UN solo #
-      window.location.href = "app.html#" + cleanHash;
-    }
-  })();
-</script>
+      (function () {
+        const hash = window.location.hash;
+        // Detectamos si es un link de Supabase
+        if (hash && hash.includes("access_token=") && hash.includes("type=")) {
+          // Ocultamos para evitar parpadeos
+          document.documentElement.style.display = "none";
+
+          // CORRECCIÓN: Aseguramos que no haya doble #
+          // Quitamos el primer caracter (#) del hash actual para pegarlo limpio
+          const cleanHash = hash.substring(1);
+
+          // Redirigimos a app.html con UN solo #
+          window.location.href = "app.html#" + cleanHash;
+        }
+      })();
+    </script>
   </head>
 
   <body class="index-page">
@@ -1059,7 +1059,9 @@
                   "
                 />
                 <h4 class="text-white fs-5">Emanuel B.</h4>
-                <p class="fst-italic text-white-small small">Desarrollador Web Fullstack</p>
+                <p class="fst-italic text-white-small small">
+                  Desarrollador Web Fullstack
+                </p>
               </div>
             </div>
             <div class="col-lg-3 col-md-6">
@@ -1075,7 +1077,9 @@
                   "
                 />
                 <h4 class="text-white fs-5">Saul S.</h4>
-                <p class="fst-italic text-white-small small">Desarrollador de Dispositivo</p>
+                <p class="fst-italic text-white-small small">
+                  Desarrollador de Dispositivo
+                </p>
               </div>
             </div>
             <div class="col-lg-3 col-md-6">
@@ -1091,7 +1095,9 @@
                   "
                 />
                 <h4 class="text-white fs-5">Jesús P.</h4>
-                <p class="fst-italic text-white-small small">Diseñador Gráfico, Documentación</p>
+                <p class="fst-italic text-white-small small">
+                  Diseñador Gráfico, Documentación
+                </p>
               </div>
             </div>
           </div>
@@ -1249,135 +1255,135 @@
     <script src="assets/js/main.js"></script>
 
     <script>
-  // 1. OPTIMIZACIÓN DEL EFECTO SPOTLIGHT
-  const cards = document.querySelectorAll(".spotlight-card, .pricing-item");
+      // 1. OPTIMIZACIÓN DEL EFECTO SPOTLIGHT
+      const cards = document.querySelectorAll(".spotlight-card, .pricing-item");
 
-  cards.forEach((card) => {
-    card.addEventListener("mousemove", (e) => {
-      requestAnimationFrame(() => {
-        const rect = card.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        card.style.setProperty("--mouse-x", `${x}px`);
-        card.style.setProperty("--mouse-y", `${y}px`);
+      cards.forEach((card) => {
+        card.addEventListener("mousemove", (e) => {
+          requestAnimationFrame(() => {
+            const rect = card.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            card.style.setProperty("--mouse-x", `${x}px`);
+            card.style.setProperty("--mouse-y", `${y}px`);
+          });
+        });
       });
-    });
-  });
 
-  // 2. PARTICLE NETWORK BACKGROUND (Modificado: Sin líneas al mouse, más repulsión)
-  const canvas = document.getElementById("canvas-container");
-  const ctx = canvas.getContext("2d");
-  let width, height;
-  let particles = [];
+      // 2. PARTICLE NETWORK BACKGROUND (Modificado: Sin líneas al mouse, más repulsión)
+      const canvas = document.getElementById("canvas-container");
+      const ctx = canvas.getContext("2d");
+      let width, height;
+      let particles = [];
 
-  const particleCount = 200; // Cantidad de partículas (puedes bajarlo si sientes lag)
-  const connectionDistance = 100; // Distancia para conectar partículas entre sí
-  const mouseDistance = 150; // Aumenté un poco el radio de interacción del mouse
+      const particleCount = 200; // Cantidad de partículas (puedes bajarlo si sientes lag)
+      const connectionDistance = 100; // Distancia para conectar partículas entre sí
+      const mouseDistance = 150; // Aumenté un poco el radio de interacción del mouse
 
-  let mouse = { x: null, y: null };
+      let mouse = { x: null, y: null };
 
-  window.addEventListener("mousemove", (e) => {
-    // Usamos clientX/Y que es más estándar para coordenadas de ventana
-    mouse.x = e.clientX;
-    mouse.y = e.clientY;
-  });
+      window.addEventListener("mousemove", (e) => {
+        // Usamos clientX/Y que es más estándar para coordenadas de ventana
+        mouse.x = e.clientX;
+        mouse.y = e.clientY;
+      });
 
-  window.addEventListener("resize", resize);
+      window.addEventListener("resize", resize);
 
-  function resize() {
-    width = canvas.width = window.innerWidth;
-    height = canvas.height = window.innerHeight;
-  }
-
-  class Particle {
-    constructor() {
-      this.x = Math.random() * width;
-      this.y = Math.random() * height;
-      this.vx = (Math.random() - 0.5) * 0.5;
-      this.vy = (Math.random() - 0.5) * 0.5;
-      this.size = Math.random() * 2 + 1;
-    }
-
-    update() {
-      this.x += this.vx;
-      this.y += this.vy;
-
-      // Rebotar en bordes
-      if (this.x < 0 || this.x > width) this.vx *= -1;
-      if (this.y < 0 || this.y > height) this.vy *= -1;
-
-      // --- LÓGICA DE REPULSIÓN DEL MOUSE ---
-      if (mouse.x != null) {
-        let dx = mouse.x - this.x;
-        let dy = mouse.y - this.y;
-        let distance = Math.sqrt(dx * dx + dy * dy);
-
-        if (distance < mouseDistance) {
-          const forceDirectionX = dx / distance;
-          const forceDirectionY = dy / distance;
-          
-          // Cuánto más cerca, más fuerte el empuje
-          const force = (mouseDistance - distance) / mouseDistance;
-          
-          // AQUÍ ESTÁ EL CAMBIO: Multiplicador de fuerza aumentado a 3 (antes 0.5)
-          // El signo negativo (-) es lo que hace que las "empuje" lejos.
-          const directionX = forceDirectionX * force * 2; 
-          const directionY = forceDirectionY * force * 2;
-
-          this.x -= directionX;
-          this.y -= directionY;
-        }
+      function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
       }
-    }
 
-    draw() {
-      ctx.fillStyle = "rgba(59, 130, 246, 0.8)";
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
+      class Particle {
+        constructor() {
+          this.x = Math.random() * width;
+          this.y = Math.random() * height;
+          this.vx = (Math.random() - 0.5) * 0.5;
+          this.vy = (Math.random() - 0.5) * 0.5;
+          this.size = Math.random() * 2 + 1;
+        }
 
-  function initParticles() {
-    particles = [];
-    for (let i = 0; i < particleCount; i++) {
-      particles.push(new Particle());
-    }
-  }
+        update() {
+          this.x += this.vx;
+          this.y += this.vy;
 
-  function animateParticles() {
-    ctx.clearRect(0, 0, width, height);
+          // Rebotar en bordes
+          if (this.x < 0 || this.x > width) this.vx *= -1;
+          if (this.y < 0 || this.y > height) this.vy *= -1;
 
-    for (let i = 0; i < particles.length; i++) {
-      particles[i].update();
-      particles[i].draw();
+          // --- LÓGICA DE REPULSIÓN DEL MOUSE ---
+          if (mouse.x != null) {
+            let dx = mouse.x - this.x;
+            let dy = mouse.y - this.y;
+            let distance = Math.sqrt(dx * dx + dy * dy);
 
-      // Dibujar conexiones ENTRE PARTÍCULAS (esto se mantiene)
-      for (let j = i; j < particles.length; j++) {
-        let dx = particles[i].x - particles[j].x;
-        let dy = particles[i].y - particles[j].y;
-        let distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < mouseDistance) {
+              const forceDirectionX = dx / distance;
+              const forceDirectionY = dy / distance;
 
-        if (distance < connectionDistance) {
+              // Cuánto más cerca, más fuerte el empuje
+              const force = (mouseDistance - distance) / mouseDistance;
+
+              // AQUÍ ESTÁ EL CAMBIO: Multiplicador de fuerza aumentado a 3 (antes 0.5)
+              // El signo negativo (-) es lo que hace que las "empuje" lejos.
+              const directionX = forceDirectionX * force * 2;
+              const directionY = forceDirectionY * force * 2;
+
+              this.x -= directionX;
+              this.y -= directionY;
+            }
+          }
+        }
+
+        draw() {
+          ctx.fillStyle = "rgba(59, 130, 246, 0.8)";
           ctx.beginPath();
-          let opacity = 1 - distance / connectionDistance;
-          ctx.strokeStyle = "rgba(59, 130, 246, " + opacity * 0.2 + ")";
-          ctx.lineWidth = 1;
-          ctx.moveTo(particles[i].x, particles[i].y);
-          ctx.lineTo(particles[j].x, particles[j].y);
-          ctx.stroke();
+          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+          ctx.fill();
         }
       }
-      
-      // NOTA: He eliminado la parte que dibujaba la línea hacia el mouse.
-      // Ahora solo calcula la física (en update) pero no dibuja la línea.
-    }
-    requestAnimationFrame(animateParticles);
-  }
 
-  resize();
-  initParticles();
-  animateParticles();
-</script>
+      function initParticles() {
+        particles = [];
+        for (let i = 0; i < particleCount; i++) {
+          particles.push(new Particle());
+        }
+      }
+
+      function animateParticles() {
+        ctx.clearRect(0, 0, width, height);
+
+        for (let i = 0; i < particles.length; i++) {
+          particles[i].update();
+          particles[i].draw();
+
+          // Dibujar conexiones ENTRE PARTÍCULAS (esto se mantiene)
+          for (let j = i; j < particles.length; j++) {
+            let dx = particles[i].x - particles[j].x;
+            let dy = particles[i].y - particles[j].y;
+            let distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < connectionDistance) {
+              ctx.beginPath();
+              let opacity = 1 - distance / connectionDistance;
+              ctx.strokeStyle = "rgba(59, 130, 246, " + opacity * 0.2 + ")";
+              ctx.lineWidth = 1;
+              ctx.moveTo(particles[i].x, particles[i].y);
+              ctx.lineTo(particles[j].x, particles[j].y);
+              ctx.stroke();
+            }
+          }
+
+          // NOTA: He eliminado la parte que dibujaba la línea hacia el mouse.
+          // Ahora solo calcula la física (en update) pero no dibuja la línea.
+        }
+        requestAnimationFrame(animateParticles);
+      }
+
+      resize();
+      initParticles();
+      animateParticles();
+    </script>
   </body>
 </html>
