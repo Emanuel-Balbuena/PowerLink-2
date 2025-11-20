@@ -161,7 +161,14 @@ function setupAuthForms() {
         const { error } = await api.auth.login(email, pass);
         if (error) throw error;
       } catch (err) {
-        Notificaciones.mostrar("Error de acceso: " + err.message, "error");
+        if (err.message === "Email not confirmed") {
+          Notificaciones.mostrar(
+            "Por favor, verifica tu correo antes de ingresar.",
+            "warning"
+          );
+        } else {
+          Notificaciones.mostrar("Error de acceso: " + err.message, "error");
+        }
         btn.disabled = false;
         btn.innerText = "Ingresar";
       }
