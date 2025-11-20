@@ -369,14 +369,21 @@
     <script>
       (function () {
         const hash = window.location.hash;
-        // Solo actuamos si parece un token de supabase
         if (hash && hash.includes("access_token=") && hash.includes("type=")) {
-          document.documentElement.style.display = "none"; // Ocultar para evitar flash
+          document.documentElement.style.display = "none"; // Ocultar
 
-          // 1. Quitamos TODOS los # del principio para limpiar "##" o "###"
+          // 1. DETECTAR INTENCIÓN Y GUARDAR EN MEMORIA
+          if (hash.includes("type=recovery")) {
+            localStorage.setItem("auth_pending_action", "recovery");
+          } else if (
+            hash.includes("type=signup") ||
+            hash.includes("type=invite")
+          ) {
+            localStorage.setItem("auth_pending_action", "signup");
+          }
+
+          // 2. Limpiar hash y redirigir
           const cleanParams = hash.replace(/^#+/, "");
-
-          // 2. Redirigimos construyendo la URL limpia con UN solo #
           window.location.href = "app.html#" + cleanParams;
         }
       })();

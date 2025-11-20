@@ -36,118 +36,48 @@ function init() {
   api.auth.onAuthStateChange((event, session) => {
     console.log("🔐 AUTH EVENT:", event);
 
-    // Preloader
     if (preloader && !preloader.classList.contains("loaded")) {
       preloader.style.opacity = "0";
       preloader.classList.add("loaded");
       setTimeout(() => preloader.remove(), 500);
     }
 
-    // LÓGICA DE "BANDERAS" (PRIORIDAD MÁXIMA)
-    // Si detectamos que el usuario venía a recuperar contraseña, forzamos la vista
-    // ignorando si el evento es SIGNED_IN o INITIAL_SESSION.
-    if (pendingAction === "recovery") {
-      console.log("🛑 Interceptando redirección -> Forzando Reset Password");
-      pendingAction = null; // Consumimos la flag para que no se cicle
-      showAppShell(); // Mostramos la app
-      window.location.hash = "#reset-password"; // Forzamos el hash limpio
-      handleRouting(); // Renderizamos manualmente
-      return; // DETENEMOS EL RESTO DE LA EJECUCIÓN
-    }
-
-    if (pendingAction === "signup") {
-      console.log("🛑 Interceptando redirección -> Forzando Verify Email");
-      pendingAction = null;
-      showAppShell();
-      window.location.hash = "#verify-email";
-      handleRouting();
-      return;
-    }
-
-    // CASO: Usuario Logueado Normal
     if (session) {
       if (
         isAppInitialized &&
         (event === "INITIAL_SESSION" || event === "SIGNED_IN")
-      ) {
-        // AUNQUE ya esté inicializada, revisamos si Supabase nos robó el hash
-        const currentHash = window.location.hash;
-        if (
-          (currentHash === "" || currentHash === "#dashboard") &&
-          (pendingAction === "signup" || pendingAction === "recovery")
-        ) {
-          // Si estamos en dashboard pero teníamos una acción pendiente, es porque Supabase limpió la URL.
-          // Dejamos continuar hacia abajo para que el Timeout lo arregle.
-        } else {
-          return;
-        }
+      )
+        return;
+
+      // CASO RECUPERACIÓN DE CONTRASEÑA (Evento nativo de Supabase)
+      if (event === "PASSWORD_RECOVERY") {
+        localStorage.setItem("auth_pending_action", "recovery");
+        window.location.hash = "#reset-password";
+        handleRouting();
+        return;
       }
 
-      showAppShell();
       isAppInitialized = true;
 
-      // --- 🔥 RED DE SEGURIDAD MEJORADA (EL JAQUE MATE) ---
-
-      // 1. Identificar si estamos en una vista protegida O si deberíamos estarlo (pendingAction)
-      const isProtectedMsg =
-        window.location.hash.includes("verify-email") ||
-        window.location.hash.includes("reset-password");
-      const targetAction = pendingAction; // Guardamos la acción antes de que se pierda
-
-      if (isProtectedMsg || targetAction) {
-        console.log("🛡️ Vista protegida detectada. Asegurando permanencia...");
-
-        // Determinamos cuál debería ser el hash correcto
-        let targetHash = "#verify-email"; // Por defecto
-        if (
-          window.location.hash.includes("reset-password") ||
-          targetAction === "recovery"
-        ) {
-          targetHash = "#reset-password";
-        }
-
-        // 2. Forzamos la vista INMEDIATAMENTE
-        if (window.location.hash !== targetHash) {
-          window.history.replaceState(
-            null,
-            "",
-            window.location.pathname + targetHash
-          );
-          handleRouting();
-        }
-
-        // 3. EL TRUCO MAESTRO: SetTimeout para ganar la carrera a Supabase
-        // Esperamos 800ms. Si Supabase limpia la URL en este tiempo, nosotros la restauramos.
-        setTimeout(() => {
-          // Si la URL cambió a vacía o dashboard, pero nosotros queríamos estar en targetHash...
-          if (window.location.hash !== targetHash) {
-            console.log(
-              "♻️ Supabase limpió la URL. Restaurando hash correcto:",
-              targetHash
-            );
-            window.location.hash = targetHash;
-            // Esto disparará el hashchange y el router lo arreglará automáticamente
-          }
-        }, 800);
-
-        // Iniciamos servicios
-        startNotificationService();
-        setupNotificationListener();
-        setupMobileNav();
-
-        return; // IMPORTANTE: Detenemos aquí para que no siga al dashboard
+      if (authView) {
+        authView.classList.add("d-none");
+        authView.style.display = "none";
       }
-      // -----------------------------------
+      if (appShell) appShell.classList.remove("d-none");
 
-      handleRouting();
+      handleRouting(); // El router revisará el LocalStorage y decidirá correctamente
 
       startNotificationService();
       setupNotificationListener();
       setupMobileNav();
     } else {
-      // CASO: Usuario Desconectado
+      // Usuario desconectado...
       isAppInitialized = false;
-      showAuthView();
+      if (authView) {
+        authView.classList.remove("d-none");
+        authView.style.display = "";
+      }
+      if (appShell) appShell.classList.add("d-none");
       stopNotificationService();
     }
   });

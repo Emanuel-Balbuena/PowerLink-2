@@ -15,52 +15,48 @@ export async function handleRouting() {
   const appContent = document.getElementById("app-content");
   if (!appContent) return;
 
-  // 1. *** INTERCEPTAR Y PROCESAR TOKENS DE SUPABASE ***
-  // Obtenemos el hash crudo. A veces llega con '##', así que limpiamos todo lo que no sean letras al inicio.
+  // 1. OBTENER HASH ACTUAL
   let fullHash = window.location.hash;
-
-  // CORRECCIÓN CRÍTICA: Si hay doble ##, lo arreglamos
   if (fullHash.startsWith("##")) fullHash = fullHash.substring(1);
+  const cleanHash = fullHash.slice(1); // Quitar el #
 
-  // Quitamos el primer # para analizar
-  const cleanHash = fullHash.slice(1);
-
+  // 2. DETECTAR TOKENS DE SUPABASE (Primera carga)
   const isTokenHash =
     cleanHash.includes("access_token=") && cleanHash.includes("type=");
 
   if (isTokenHash) {
-    console.log("DEBUG: Token detectado. Procesando...");
-
-    // Truco para leer los parametros aunque esten en el hash
-    const paramsString = cleanHash.replace("#", "&"); // Reemplazar posibles # extra por &
-    const urlParams = new URLSearchParams(paramsString);
-    const tokenType = urlParams.get("type");
-
-    console.log("DEBUG: Tipo de token:", tokenType);
-
-    // Decidir a dónde ir SIN recargar todavía
+    // Si hay token, extraemos el tipo por seguridad, pero confiamos más en LocalStorage
+    // Limpiamos la URL visualmente
+    const pendingAction = localStorage.getItem("auth_pending_action");
     let nextHash = "#dashboard";
 
-    if (tokenType === "recovery") {
-      nextHash = "#reset-password";
-    } else if (tokenType === "signup" || tokenType === "invite") {
-      nextHash = "#verify-email";
-    }
+    if (pendingAction === "recovery") nextHash = "#reset-password";
+    if (pendingAction === "signup") nextHash = "#verify-email";
 
-    // Limpiamos la URL fea del token y ponemos la bonita
     window.history.replaceState(null, "", window.location.pathname + nextHash);
-
-    // Actualizamos la variable local para que el switch de abajo renderice YA
-    // sin esperar otro evento.
-    fullHash = nextHash;
+    fullHash = nextHash; // Actualizamos variable local
   }
 
-  // 2. *** ENRUTAMIENTO NORMAL ***
-  // Asegurarnos de usar el fullHash limpio (o el que acabamos de forzar)
-  // Si fullHash viene vacío o es solo #, vamos al dashboard
-  const finalHash =
+  // 3. LÓGICA DE PRIORIDAD (PERSISTENCIA)
+  // Si el hash es vacío o dashboard, verificamos si hay una acción pendiente en memoria.
+  // Esto arregla el problema cuando Supabase borra la URL.
+  let finalHash =
     fullHash && fullHash !== "#" && fullHash !== "##" ? fullHash : "#dashboard";
 
+  const storedAction = localStorage.getItem("auth_pending_action");
+
+  if ((finalHash === "#dashboard" || finalHash === "") && storedAction) {
+    console.log(
+      `🧠 Memoria activada: Sobreescribiendo Dashboard con ${storedAction}`
+    );
+    if (storedAction === "recovery") finalHash = "#reset-password";
+    if (storedAction === "signup") finalHash = "#verify-email";
+
+    // Forzamos la URL visual para que coincida
+    window.history.replaceState(null, "", window.location.pathname + finalHash);
+  }
+
+  // 4. RENDERIZADO
   console.log("Navegando a:", finalHash);
   updateActiveNav(finalHash);
 
@@ -69,9 +65,21 @@ export async function handleRouting() {
       await renderResetPassword(appContent);
     } else if (finalHash.startsWith("#verify-email")) {
       await renderVerifyEmail(appContent);
+      // Opcional: Limpiar la memoria una vez renderizado exitosamente
+      // localStorage.removeItem('auth_pending_action');
+      // (Mejor hacerlo al hacer click en "Ir a Login" para asegurar que lo vea)
     } else if (finalHash === "#dashboard") {
+      // Seguridad extra: Si llegamos aquí, limpiamos cualquier acción pendiente vieja
+      // para no atrapar al usuario.
+      if (!storedAction) await renderDashboard(appContent);
+      else {
+        // Si había acción pero por error caímos aquí, forzamos recarga de router
+        // (Caso borde, pero ayuda)
+      }
       await renderDashboard(appContent);
-    } else if (finalHash === "#devices") {
+    }
+    // ... RESTO DE TUS RUTAS (Devices, Groups, Settings, etc.) ...
+    else if (finalHash === "#devices") {
       await renderDevices(appContent);
     } else if (finalHash.startsWith("#devices/")) {
       const id = finalHash.split("/")[1];
