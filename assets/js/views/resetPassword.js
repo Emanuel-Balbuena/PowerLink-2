@@ -1,32 +1,31 @@
 // js/views/resetPassword.js
-
-import { api } from '../api.js';
-import { Notificaciones } from '../notificaciones.js';
+import { api } from "../api.js";
+import { Notificaciones } from "../notificaciones.js";
 
 export async function renderResetPassword(container) {
-    const html = `
+  const html = `
     <section class="section d-flex align-items-center justify-content-center" style="min-height: 80vh;">
       <div class="card animate__animated animate__fadeInUp" style="max-width: 420px; width: 100%; background-color: var(--surface-color); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
         <div class="card-body p-5 text-center">
           
-          <i class="bi bi-shield-lock-fill fs-1 mb-4 text-warning"></i>
+          <i class="bi bi-key-fill fs-1 mb-4 text-warning"></i>
           
-          <h3 class="fw-bold text-white mb-2">Establece tu Nueva Contraseña</h3>
+          <h3 class="fw-bold text-white mb-2">Nueva Contraseña</h3>
           <p class="text-white opacity-75 small">
-            Ingresa tu nueva clave de acceso para continuar. Asegúrate de que tenga al menos 6 caracteres.
+            Crea una nueva clave segura para tu cuenta.
           </p>
 
-          <form id="reset-password-form" class="mt-4">
+          <form id="password-change-form" class="mt-4">
             <div class="mb-3">
-              <input type="password" class="form-control bg-dark text-white border-secondary" id="reset-new-password" placeholder="Nueva Contraseña" minlength="6" required>
+              <input type="password" class="form-control bg-dark text-white border-secondary" id="input-new-password" placeholder="Nueva Contraseña" minlength="6" required>
             </div>
             <div class="mb-4">
-              <input type="password" class="form-control bg-dark text-white border-secondary" id="reset-confirm-password" placeholder="Confirma Contraseña" minlength="6" required>
+              <input type="password" class="form-control bg-dark text-white border-secondary" id="input-confirm-password" placeholder="Confirmar Contraseña" minlength="6" required>
             </div>
             
             <div class="d-grid">
-              <button type="submit" class="btn btn-lg btn-primary fw-bold" style="background-color: var(--accent-color); border: none;">
-                Guardar Nueva Contraseña
+              <button type="submit" class="btn btn-lg fw-bold text-dark" style="background-color: var(--yellow-accent); border: none;">
+                Actualizar Contraseña
               </button>
             </div>
           </form>
@@ -36,47 +35,49 @@ export async function renderResetPassword(container) {
     </section>
     `;
 
-    container.innerHTML = html;
-    setupListeners();
+  container.innerHTML = html;
+  setupListeners();
 }
 
 function setupListeners() {
-    const form = document.getElementById('reset-password-form');
-    if (!form) return;
+  // Usamos la misma lógica que tu formulario interno que sí funcionaba
+  const form = document.getElementById("password-change-form");
+  if (!form) return;
 
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const newPass = document.getElementById('reset-new-password').value;
-        const confirmPass = document.getElementById('reset-confirm-password').value;
-        const btn = form.querySelector('button');
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const p1 = document.getElementById("input-new-password").value;
+    const p2 = document.getElementById("input-confirm-password").value;
+    const btn = form.querySelector("button");
 
-        if (newPass !== confirmPass) {
-            return Notificaciones.mostrar("Las contraseñas no coinciden.", "error");
-        }
-        if (newPass.length < 6) {
-            return Notificaciones.mostrar("La contraseña debe tener al menos 6 caracteres.", "error");
-        }
+    if (p1 !== p2)
+      return Notificaciones.mostrar("Las contraseñas no coinciden", "error");
+    if (p1.length < 6)
+      return Notificaciones.mostrar("Mínimo 6 caracteres", "error");
 
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Actualizando...';
+    try {
+      btn.disabled = true;
+      btn.innerText = "Guardando...";
 
-        try {
-            // Llama a la función de API para actualizar la contraseña
-            // Supabase usa el token de la URL para saber qué usuario actualizar.
-            const { error } = await api.auth.updatePassword(newPass);
+      // Actualizamos contraseña
+      const { error } = await api.auth.updatePassword(p1);
+      if (error) throw error;
 
-            if (error) {
-                throw error;
-            }
+      Notificaciones.mostrar("Contraseña actualizada con éxito", "success");
 
-            Notificaciones.mostrar("Contraseña actualizada correctamente. ¡Inicia sesión!", "success");
-            // Redirigir al login
-            window.location.hash = "#login"; 
+      // 1. LIMPIEZA CRÍTICA: Borramos la bandera para no volver aquí
+      localStorage.removeItem("auth_pending_action");
 
-        } catch (err) {
-            Notificaciones.mostrar("Error al actualizar contraseña: " + err.message, "error");
-            btn.disabled = false;
-            btn.innerText = "Guardar Nueva Contraseña";
-        }
-    });
+      // 2. Redirigimos al Dashboard (porque Supabase ya mantiene la sesión iniciada)
+      setTimeout(() => {
+        window.location.hash = "#dashboard";
+        // Recargamos para asegurar que se restaure el AppShell
+        window.location.reload();
+      }, 1500);
+    } catch (err) {
+      Notificaciones.mostrar("Error: " + err.message, "error");
+      btn.disabled = false;
+      btn.innerText = "Actualizar Contraseña";
+    }
+  });
 }

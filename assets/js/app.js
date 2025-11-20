@@ -1,33 +1,16 @@
 /**
  * js/app.js
  * Lógica central: Auth, Navegación y Notificaciones
- * Versión: FIX Recuperación y Verificación (Flag System)
+ * Versión: Final (Standalone Mode + LocalStorage Flag)
  */
-import { api } from "./api.js";
-import { handleRouting } from "./router.js";
-import { Notificaciones } from "./notificaciones.js";
+import { api } from './api.js';
+import { handleRouting } from './router.js';
+import { Notificaciones } from './notificaciones.js';
 
 // Elementos DOM globales
 const authView = document.getElementById("auth-view");
 const appShell = document.getElementById("app-shell");
 const preloader = document.getElementById("preloader");
-
-// --- 1. DETECCIÓN TEMPRANA DE INTENCIÓN ---
-// Antes de que Supabase borre el hash, revisamos si venimos de un correo.
-let pendingAction = null;
-const initialHash = window.location.hash;
-
-if (initialHash.includes("type=recovery")) {
-  pendingAction = "recovery";
-  console.log("🚩 Flag activada: RECUPERACIÓN DE CONTRASEÑA");
-} else if (
-  initialHash.includes("type=signup") ||
-  initialHash.includes("type=invite")
-) {
-  pendingAction = "signup";
-  console.log("🚩 Flag activada: VERIFICACIÓN DE CORREO");
-}
-// -------------------------------------------
 
 let isAppInitialized = false;
 
@@ -36,79 +19,116 @@ function init() {
   api.auth.onAuthStateChange((event, session) => {
     console.log("🔐 AUTH EVENT:", event);
 
-    if (preloader && !preloader.classList.contains("loaded")) {
-      preloader.style.opacity = "0";
-      preloader.classList.add("loaded");
+    // Preloader off
+    if (preloader && !preloader.classList.contains('loaded')) {
+      preloader.style.opacity = '0';
+      preloader.classList.add('loaded');
       setTimeout(() => preloader.remove(), 500);
     }
 
     if (session) {
-      if (
-        isAppInitialized &&
-        (event === "INITIAL_SESSION" || event === "SIGNED_IN")
-      )
-        return;
-
-      // CASO RECUPERACIÓN DE CONTRASEÑA (Evento nativo de Supabase)
-      if (event === "PASSWORD_RECOVERY") {
-        localStorage.setItem("auth_pending_action", "recovery");
-        window.location.hash = "#reset-password";
-        handleRouting();
-        return;
+      // CASO ESPECIAL: RECUPERACIÓN DE CONTRASEÑA (Evento nativo de Supabase)
+      // Si llega este evento, forzamos la redirección y guardamos la bandera
+      if (event === 'PASSWORD_RECOVERY') {
+          localStorage.setItem('auth_pending_action', 'recovery');
+          window.location.hash = '#reset-password';
+          handleRouting();
+          return;
       }
 
-      isAppInitialized = true;
+      // Evitar re-inicialización innecesaria si ya estamos dentro
+      if (isAppInitialized && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN')) return;
 
-      if (authView) {
-        authView.classList.add("d-none");
-        authView.style.display = "none";
+      isAppInitialized = true;
+      
+      // Ocultar vista de Login y mostrar AppShell
+      if (authView) { 
+          authView.classList.add("d-none"); 
+          authView.style.display = 'none'; 
       }
       if (appShell) appShell.classList.remove("d-none");
 
-      handleRouting(); // El router revisará el LocalStorage y decidirá correctamente
+      // --- LÓGICA DE MODO STANDALONE (Vistas especiales fuera del Shell) ---
+      // Verificamos si hay banderas en memoria o si la URL ya es una de las especiales
+      const pendingAction = localStorage.getItem('auth_pending_action');
+      const currentHash = window.location.hash;
+      
+      // Determinamos si debemos ocultar el menú lateral y header
+      const isStandalone = 
+          pendingAction === 'signup' || 
+          pendingAction === 'recovery' || 
+          currentHash.includes('verify-email') || 
+          currentHash.includes('reset-password');
 
-      startNotificationService();
-      setupNotificationListener();
-      setupMobileNav();
+      // Ajustamos la interfaz (Ocultar/Mostrar header y botones flotantes)
+      updateShellMode(isStandalone);
+
+      // Ejecutamos el router para pintar la vista correcta
+      handleRouting(); 
+      
+      // Solo iniciamos servicios de notificaciones si NO estamos en modo standalone
+      if (!isStandalone) {
+        startNotificationService();
+        setupNotificationListener();
+        setupMobileNav();
+      } else {
+        // En modo standalone (reset password/verify), detenemos polling para no molestar
+        stopNotificationService();
+      }
+
     } else {
-      // Usuario desconectado...
+      // CASO: Usuario Desconectado
       isAppInitialized = false;
-      if (authView) {
-        authView.classList.remove("d-none");
-        authView.style.display = "";
+      
+      // Restaurar vista de Login
+      if (authView) { 
+          authView.classList.remove("d-none"); 
+          authView.style.display = ''; 
       }
       if (appShell) appShell.classList.add("d-none");
+      
       stopNotificationService();
     }
   });
 
-  // Navegación
-  window.addEventListener("hashchange", handleRouting);
+  // Listener para cambios manuales de URL
+  window.addEventListener('hashchange', () => {
+      // Revisar modo standalone también al cambiar de ruta manualmente
+      const currentHash = window.location.hash;
+      const isStandalone = currentHash.includes('verify-email') || currentHash.includes('reset-password');
+      updateShellMode(isStandalone);
+      handleRouting();
+  });
 
-  // Inicializar lógica de la vista
+  // Inicializar formularios de login/registro
   setupAuthForms();
   setupPasswordToggles();
 }
 
-// Funciones auxiliares para limpiar el código visual
-function showAppShell() {
-  if (authView) {
-    authView.classList.add("d-none");
-    authView.style.display = "none";
-  }
-  if (appShell) appShell.classList.remove("d-none");
-}
-
-function showAuthView() {
-  if (authView) {
-    authView.classList.remove("d-none");
-    authView.style.display = "";
-  }
-  if (appShell) appShell.classList.add("d-none");
+// --- FUNCIÓN PARA SACAR VISTAS DEL SHELL ---
+function updateShellMode(isStandalone) {
+    const header = document.getElementById('header');
+    const toggleBtn = document.querySelector('.header-toggle');
+    const notifBtn = document.querySelector('.btn-notif-floating'); // Si tienes botón flotante de notif
+    
+    if (isStandalone) {
+        // Modo Limpio: Ocultar navegación y botones extras
+        if (header) header.style.display = 'none';
+        if (toggleBtn) toggleBtn.style.display = 'none';
+        if (notifBtn) notifBtn.style.display = 'none';
+        document.body.classList.add('standalone-view');
+    } else {
+        // Modo Normal: Restaurar todo
+        if (header) header.style.display = '';
+        if (toggleBtn) toggleBtn.style.display = '';
+        if (notifBtn) notifBtn.style.display = '';
+        document.body.classList.remove('standalone-view');
+    }
 }
 
 // --- 1. LÓGICA DE FORMULARIOS (LOGIN/REGISTRO) ---
 function setupAuthForms() {
+
   // A) LOGIN
   const loginForm = document.getElementById("login-form");
   if (loginForm) {
@@ -116,14 +136,15 @@ function setupAuthForms() {
       e.preventDefault();
       const email = document.getElementById("login-email").value;
       const pass = document.getElementById("login-password").value;
-      const btn = loginForm.querySelector("button");
+      const btn = loginForm.querySelector('button');
 
       try {
         btn.disabled = true;
-        btn.innerHTML =
-          '<span class="spinner-border spinner-border-sm"></span> Entrando...';
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Entrando...';
+
         const { error } = await api.auth.login(email, pass);
         if (error) throw error;
+
       } catch (err) {
         Notificaciones.mostrar("Error de acceso: " + err.message, "error");
         btn.disabled = false;
@@ -139,76 +160,55 @@ function setupAuthForms() {
       e.preventDefault();
       const email = document.getElementById("register-email").value;
       const pass = document.getElementById("register-password").value;
-      const confirm = document.getElementById(
-        "register-password-confirm"
-      ).value;
+      const confirm = document.getElementById("register-password-confirm").value;
 
-      if (pass !== confirm)
-        return Notificaciones.mostrar("Las contraseñas no coinciden", "error");
+      if (pass !== confirm) return Notificaciones.mostrar("Las contraseñas no coinciden", "error");
 
-      const btn = regForm.querySelector("button");
+      const btn = regForm.querySelector('button');
       try {
-        btn.disabled = true;
-        btn.innerText = "Registrando...";
-
-        // MODIFICACIÓN: Usar window.location.origin para asegurar redirección correcta
+        btn.disabled = true; btn.innerText = "Registrando...";
         const { error } = await api.auth.register(email, pass);
         if (error) throw error;
 
-        Notificaciones.mostrar(
-          "¡Cuenta creada! Por favor verifica tu correo.",
-          "success"
-        );
+        Notificaciones.mostrar("¡Cuenta creada! Por favor verifica tu correo.", "success");
         // Opcional: Limpiar formulario
         regForm.reset();
-        btn.disabled = false;
-        btn.innerText = "Registrarse";
+        btn.disabled = false; btn.innerText = "Registrarse";
+
       } catch (err) {
         Notificaciones.mostrar("Error: " + err.message, "error");
-        btn.disabled = false;
-        btn.innerText = "Registrarse";
+        btn.disabled = false; btn.innerText = "Registrarse";
       }
     });
   }
 
-  // C) RECUPERAR CONTRASEÑA (Solicitud)
+  // C) RECUPERAR CONTRASEÑA (Solicitud - Envío de correo)
   const forgotForm = document.getElementById("forgot-password-form");
   if (forgotForm) {
     forgotForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const email = document.getElementById("recovery-email").value;
-      const btn = forgotForm.querySelector("button");
+      const btn = forgotForm.querySelector('button');
 
       try {
-        btn.disabled = true;
-        btn.innerText = "Enviando...";
+        btn.disabled = true; btn.innerText = "Enviando...";
         await api.auth.recoverPassword(email);
-        Notificaciones.mostrar(
-          "Si el correo existe, recibirás un enlace.",
-          "info"
-        );
-
+        Notificaciones.mostrar("Si el correo está registrado, recibirás un enlace.", "info");
+        
         // Cerrar modal
-        const modalEl = document.getElementById("forgotPasswordModal");
+        const modalEl = document.getElementById('forgotPasswordModal');
         const modalInstance = bootstrap.Modal.getInstance(modalEl);
         if (modalInstance) modalInstance.hide();
+
       } catch (err) {
         Notificaciones.mostrar("Error: " + err.message, "error");
       } finally {
-        btn.disabled = false;
-        btn.innerText = "Enviar Enlace";
+        btn.disabled = false; btn.innerText = "Enviar Enlace";
       }
     });
   }
 
-  // D) NUEVA CONTRASEÑA (Reset - Lógica movida a vista, pero mantenemos listener por seguridad)
-  // Nota: La lógica principal ahora vive en views/resetPassword.js, pero si el form existe en el DOM inicial:
-  const newPassForm = document.getElementById("new-password-form");
-  if (newPassForm) {
-    /* ... lógica existente ... */
-  }
-
-  // E) LOGOUT
+  // D) LOGOUT
   const logoutBtn = document.getElementById("logout-button");
   if (logoutBtn) {
     logoutBtn.addEventListener("click", async (e) => {
@@ -220,43 +220,49 @@ function setupAuthForms() {
   }
 }
 
-// --- 2. UTILIDADES Y --- 3. MENÚ MÓVIL (Sin cambios, copia tu código original si falta algo) ---
+// --- 2. UTILIDADES ---
+
 function setupPasswordToggles() {
-  document.querySelectorAll(".toggle-password").forEach((icon) => {
-    icon.addEventListener("click", () => {
+  document.querySelectorAll('.toggle-password').forEach(icon => {
+    icon.addEventListener('click', () => {
       const inputId = icon.dataset.target;
       const input = document.getElementById(inputId);
       if (!input) return;
-      if (input.type === "password") {
-        input.type = "text";
-        icon.classList.remove("bi-eye-slash");
-        icon.classList.add("bi-eye");
+
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('bi-eye-slash');
+        icon.classList.add('bi-eye');
       } else {
-        input.type = "password";
-        icon.classList.remove("bi-eye");
-        icon.classList.add("bi-eye-slash");
+        input.type = 'password';
+        icon.classList.remove('bi-eye');
+        icon.classList.add('bi-eye-slash');
       }
     });
   });
 }
 
+// --- 3. MENÚ MÓVIL ---
 function setupMobileNav() {
-  const mobileNavToggleBtn = document.querySelector(".header-toggle");
-  if (mobileNavToggleBtn && !mobileNavToggleBtn.dataset.listening) {
+  const mobileNavToggleBtn = document.querySelector('.header-toggle');
+  // Solo añadir listener si el botón existe y no está oculto por modo standalone
+  if (mobileNavToggleBtn && mobileNavToggleBtn.style.display !== 'none' && !mobileNavToggleBtn.dataset.listening) {
     mobileNavToggleBtn.dataset.listening = "true";
-    mobileNavToggleBtn.addEventListener("click", function () {
-      document.querySelector("body").classList.toggle("mobile-nav-active");
-      document.querySelector("#header").classList.toggle("header-show");
-      this.classList.toggle("bi-list");
-      this.classList.toggle("bi-x");
+
+    mobileNavToggleBtn.addEventListener('click', function () {
+      document.querySelector('body').classList.toggle('mobile-nav-active');
+      document.querySelector('#header').classList.toggle('header-show');
+      this.classList.toggle('bi-list');
+      this.classList.toggle('bi-x');
     });
-    document.querySelectorAll("#navmenu a").forEach((navLink) => {
-      navLink.addEventListener("click", () => {
-        if (document.querySelector(".mobile-nav-active")) {
-          document.querySelector("body").classList.remove("mobile-nav-active");
-          document.querySelector("#header").classList.remove("header-show");
-          mobileNavToggleBtn.classList.remove("bi-x");
-          mobileNavToggleBtn.classList.add("bi-list");
+
+    document.querySelectorAll('#navmenu a').forEach(navLink => {
+      navLink.addEventListener('click', () => {
+        if (document.querySelector('.mobile-nav-active')) {
+          document.querySelector('body').classList.remove('mobile-nav-active');
+          document.querySelector('#header').classList.remove('header-show');
+          mobileNavToggleBtn.classList.remove('bi-x');
+          mobileNavToggleBtn.classList.add('bi-list');
         }
       });
     });
@@ -268,9 +274,9 @@ let notificationInterval = null;
 let cachedAlerts = [];
 
 function setupNotificationListener() {
-  const myOffcanvas = document.getElementById("offcanvasNotifications");
+  const myOffcanvas = document.getElementById('offcanvasNotifications');
   if (myOffcanvas) {
-    myOffcanvas.addEventListener("show.bs.offcanvas", renderNotificationsPanel);
+    myOffcanvas.addEventListener('show.bs.offcanvas', renderNotificationsPanel);
   }
 }
 
@@ -287,33 +293,26 @@ function stopNotificationService() {
 async function checkAlerts() {
   try {
     const alerts = await api.alerts.list();
-    const badge = document.getElementById("notification-badge");
+    const badge = document.getElementById('notification-badge');
 
     if (alerts && alerts.length > 0) {
-      if (badge) badge.classList.remove("d-none");
+      if (badge) badge.classList.remove('d-none');
     } else {
-      if (badge) badge.classList.add("d-none");
+      if (badge) badge.classList.add('d-none');
     }
     cachedAlerts = alerts || [];
-  } catch (error) {
-    console.warn("Polling error", error);
-  }
+  } catch (error) { console.warn("Polling error", error); }
 }
 
 async function renderNotificationsPanel() {
-  const container = document.getElementById("notification-list");
+  const container = document.getElementById('notification-list');
   if (!container) return;
 
-  container.innerHTML =
-    '<div class="text-center mt-4"><div class="spinner-border text-primary"></div></div>';
+  container.innerHTML = '<div class="text-center mt-4"><div class="spinner-border text-primary"></div></div>';
 
   let alerts = cachedAlerts;
   if (!alerts || alerts.length === 0) {
-    try {
-      alerts = await api.alerts.list();
-    } catch (e) {
-      /* ignore */
-    }
+    try { alerts = await api.alerts.list(); } catch (e) { /* ignore */ }
   }
 
   if (!alerts || alerts.length === 0) {
@@ -325,60 +324,34 @@ async function renderNotificationsPanel() {
     return;
   }
 
-  container.innerHTML = alerts
-    .map(
-      (alert) => `
+  container.innerHTML = alerts.map(alert => `
         <div class="list-group-item py-3" style="background: transparent; border-bottom: 1px solid rgba(255,255,255,0.1);">
             <div class="d-flex justify-content-between align-items-start">
                 <div class="me-2">
-                    <h6 class="mb-1 text-light">${getAlertIcon(
-                      alert.tipo_alerta
-                    )} ${formatAlertType(alert.tipo_alerta)}</h6>
-                    <p class="mb-1 small" style="color: rgba(255,255,255,0.7);">${
-                      alert.mensaje
-                    }</p>
-                    <small style="font-size: 0.75rem; color: rgba(255,255,255,0.3);">${new Date(
-                      alert.fecha_creacion
-                    ).toLocaleString()}</small>
+                    <h6 class="mb-1 text-light">${getAlertIcon(alert.tipo_alerta)} ${formatAlertType(alert.tipo_alerta)}</h6>
+                    <p class="mb-1 small" style="color: rgba(255,255,255,0.7);">${alert.mensaje}</p>
+                    <small style="font-size: 0.75rem; color: rgba(255,255,255,0.3);">${new Date(alert.fecha_creacion).toLocaleString()}</small>
                 </div>
-                <button class="btn btn-sm text-success btn-check-read" data-id="${
-                  alert.id_alerta
-                }"><i class="bi bi-check-circle fs-5"></i></button>
+                <button class="btn btn-sm text-success btn-check-read" data-id="${alert.id_alerta}"><i class="bi bi-check-circle fs-5"></i></button>
             </div>
         </div>
-    `
-    )
-    .join("");
+    `).join('');
 
-  container.querySelectorAll(".btn-check-read").forEach((btn) => {
-    btn.addEventListener("click", async () => {
+  container.querySelectorAll('.btn-check-read').forEach(btn => {
+    btn.addEventListener('click', async () => {
       try {
-        btn.closest(".list-group-item").style.opacity = "0.3";
+        btn.closest('.list-group-item').style.opacity = '0.3';
         await api.alerts.markAsRead(btn.dataset.id);
-        cachedAlerts = cachedAlerts.filter(
-          (a) => a.id_alerta !== btn.dataset.id
-        );
-        if (cachedAlerts.length === 0) renderNotificationsPanel();
-        else btn.closest(".list-group-item").remove();
-        const badge = document.getElementById("notification-badge");
-        if (cachedAlerts.length === 0 && badge) badge.classList.add("d-none");
-      } catch (err) {
-        console.error(err);
-      }
+        cachedAlerts = cachedAlerts.filter(a => a.id_alerta !== btn.dataset.id);
+        if (cachedAlerts.length === 0) renderNotificationsPanel(); else btn.closest('.list-group-item').remove();
+        const badge = document.getElementById('notification-badge');
+        if (cachedAlerts.length === 0 && badge) badge.classList.add('d-none');
+      } catch (err) { console.error(err); }
     });
   });
 }
 
-function getAlertIcon(t) {
-  const i = { PICO_CONSUMO: "⚡", VAMPIRO: "🧛", OFFLINE: "🔌", ERROR: "⚠️" };
-  return i[t] || "ℹ️";
-}
-function formatAlertType(t) {
-  return t ? t.replace(/_/g, " ") : "Alerta";
-}
+function getAlertIcon(t) { const i = { 'PICO_CONSUMO': '⚡', 'VAMPIRO': '🧛', 'OFFLINE': '🔌', 'ERROR': '⚠️' }; return i[t] || 'ℹ️'; }
+function formatAlertType(t) { return t ? t.replace(/_/g, ' ') : 'Alerta'; }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", init);
-} else {
-  init();
-}
+if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
