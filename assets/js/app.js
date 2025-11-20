@@ -1,11 +1,11 @@
 /**
  * js/app.js
  * Lógica central: Auth, Navegación y Notificaciones
- * Versión: Final (Standalone Mode + LocalStorage Flag)
+ * Versión: Final (Corrección UI Standalone + Fix Reset Password)
  */
-import { api } from './api.js';
-import { handleRouting } from './router.js';
-import { Notificaciones } from './notificaciones.js';
+import { api } from "./api.js";
+import { handleRouting } from "./router.js";
+import { Notificaciones } from "./notificaciones.js";
 
 // Elementos DOM globales
 const authView = document.getElementById("auth-view");
@@ -15,119 +15,146 @@ const preloader = document.getElementById("preloader");
 let isAppInitialized = false;
 
 function init() {
+  // 1. FIX DE EMERGENCIA PARA DOBLE HASH (##)
+  // Si el link llega roto (##access_token), lo arreglamos antes de que nadie se de cuenta.
+  if (window.location.hash.startsWith("##")) {
+    console.log("🔧 Corrigiendo hash doble...");
+    const clean = window.location.hash.substring(1);
+    window.history.replaceState(null, "", window.location.pathname + clean);
+  }
+
   // --- LISTENER DE ESTADO DE SESIÓN ---
   api.auth.onAuthStateChange((event, session) => {
     console.log("🔐 AUTH EVENT:", event);
 
     // Preloader off
-    if (preloader && !preloader.classList.contains('loaded')) {
-      preloader.style.opacity = '0';
-      preloader.classList.add('loaded');
+    if (preloader && !preloader.classList.contains("loaded")) {
+      preloader.style.opacity = "0";
+      preloader.classList.add("loaded");
       setTimeout(() => preloader.remove(), 500);
     }
 
     if (session) {
-      // CASO ESPECIAL: RECUPERACIÓN DE CONTRASEÑA (Evento nativo de Supabase)
-      // Si llega este evento, forzamos la redirección y guardamos la bandera
-      if (event === 'PASSWORD_RECOVERY') {
-          localStorage.setItem('auth_pending_action', 'recovery');
-          window.location.hash = '#reset-password';
-          handleRouting();
-          return;
+      // CASO: RECUPERACIÓN DE CONTRASEÑA
+      if (event === "PASSWORD_RECOVERY") {
+        localStorage.setItem("auth_pending_action", "recovery");
+        window.location.hash = "#reset-password";
+
+        // Forzamos modo standalone inmediatamente
+        updateShellMode(true);
+
+        handleRouting();
+        return;
       }
 
-      // Evitar re-inicialización innecesaria si ya estamos dentro
-      if (isAppInitialized && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN')) return;
+      if (
+        isAppInitialized &&
+        (event === "INITIAL_SESSION" || event === "SIGNED_IN")
+      )
+        return;
 
       isAppInitialized = true;
-      
-      // Ocultar vista de Login y mostrar AppShell
-      if (authView) { 
-          authView.classList.add("d-none"); 
-          authView.style.display = 'none'; 
+
+      // Ocultar Login, Mostrar Shell
+      if (authView) {
+        authView.classList.add("d-none");
+        authView.style.display = "none";
       }
       if (appShell) appShell.classList.remove("d-none");
 
-      // --- LÓGICA DE MODO STANDALONE (Vistas especiales fuera del Shell) ---
-      // Verificamos si hay banderas en memoria o si la URL ya es una de las especiales
-      const pendingAction = localStorage.getItem('auth_pending_action');
+      // --- LÓGICA DE MODO STANDALONE (Sin Shell) ---
+      const pendingAction = localStorage.getItem("auth_pending_action");
       const currentHash = window.location.hash;
-      
-      // Determinamos si debemos ocultar el menú lateral y header
-      const isStandalone = 
-          pendingAction === 'signup' || 
-          pendingAction === 'recovery' || 
-          currentHash.includes('verify-email') || 
-          currentHash.includes('reset-password');
 
-      // Ajustamos la interfaz (Ocultar/Mostrar header y botones flotantes)
+      const isStandalone =
+        pendingAction === "signup" ||
+        pendingAction === "recovery" ||
+        currentHash.includes("verify-email") ||
+        currentHash.includes("reset-password");
+
+      // Aplicar modo visual
       updateShellMode(isStandalone);
 
-      // Ejecutamos el router para pintar la vista correcta
-      handleRouting(); 
-      
-      // Solo iniciamos servicios de notificaciones si NO estamos en modo standalone
+      // Ejecutar router
+      handleRouting();
+
+      // Servicios
       if (!isStandalone) {
         startNotificationService();
         setupNotificationListener();
         setupMobileNav();
       } else {
-        // En modo standalone (reset password/verify), detenemos polling para no molestar
         stopNotificationService();
       }
-
     } else {
       // CASO: Usuario Desconectado
       isAppInitialized = false;
-      
-      // Restaurar vista de Login
-      if (authView) { 
-          authView.classList.remove("d-none"); 
-          authView.style.display = ''; 
+      if (authView) {
+        authView.classList.remove("d-none");
+        authView.style.display = "";
       }
       if (appShell) appShell.classList.add("d-none");
-      
+
+      // Asegurar que el shell esté visible por si vuelve al login
+      updateShellMode(false);
       stopNotificationService();
     }
   });
 
-  // Listener para cambios manuales de URL
-  window.addEventListener('hashchange', () => {
-      // Revisar modo standalone también al cambiar de ruta manualmente
-      const currentHash = window.location.hash;
-      const isStandalone = currentHash.includes('verify-email') || currentHash.includes('reset-password');
-      updateShellMode(isStandalone);
-      handleRouting();
+  // Listener para cambios manuales
+  window.addEventListener("hashchange", () => {
+    // FIX: Verificar ## también al navegar manualmente
+    if (window.location.hash.startsWith("##")) {
+      window.location.hash = window.location.hash.substring(1);
+      return; // El cambio de hash disparará el evento de nuevo
+    }
+
+    const currentHash = window.location.hash;
+    const isStandalone =
+      currentHash.includes("verify-email") ||
+      currentHash.includes("reset-password");
+    updateShellMode(isStandalone);
+    handleRouting();
   });
 
-  // Inicializar formularios de login/registro
   setupAuthForms();
   setupPasswordToggles();
 }
 
-// --- FUNCIÓN PARA SACAR VISTAS DEL SHELL ---
+// --- FUNCIÓN PARA SACAR VISTAS DEL SHELL (MODO NUCLEAR) ---
 function updateShellMode(isStandalone) {
-    const header = document.getElementById('header');
-    const toggleBtn = document.querySelector('.header-toggle');
-    const notifBtn = document.querySelector('.btn-notif-floating'); // Si tienes botón flotante de notif
-    
-    if (isStandalone) {
-        // Modo Limpio: Ocultar navegación y botones extras
-        if (header) header.style.display = 'none';
-        if (toggleBtn) toggleBtn.style.display = 'none';
-        if (notifBtn) notifBtn.style.display = 'none';
-        document.body.classList.add('standalone-view');
-    } else {
-        // Modo Normal: Restaurar todo
-        if (header) header.style.display = '';
-        if (toggleBtn) toggleBtn.style.display = '';
-        if (notifBtn) notifBtn.style.display = '';
-        document.body.classList.remove('standalone-view');
+  // Seleccionamos TODO lo que pueda molestar
+  const elementsToHide = [
+    document.getElementById("header"), // Sidebar
+    document.querySelector(".header-toggle"), // Botón móvil
+    document.querySelector(".btn-notif-floating"), // Botones flotantes extras
+    document.getElementById("footer"), // Footer si existe
+  ];
+
+  elementsToHide.forEach((el) => {
+    if (el) {
+      // Usamos setProperty con 'important' para vencer al CSS de Bootstrap/Template
+      if (isStandalone) {
+        el.style.setProperty("display", "none", "important");
+      } else {
+        el.style.removeProperty("display"); // Restaurar comportamiento original
+      }
     }
+  });
+
+  // Clase en el body para CSS global si hace falta
+  if (isStandalone) {
+    document.body.classList.add("standalone-view");
+  } else {
+    document.body.classList.remove("standalone-view");
+  }
 }
 
 // --- 1. LÓGICA DE FORMULARIOS (LOGIN/REGISTRO) ---
 function setupAuthForms() {
+  // Nota: He eliminado la sección de Reset Password de aquí.
+  // Esa lógica pertenece EXCLUSIVAMENTE a js/views/resetPassword.js
+  // porque el formulario no existe al cargar la página inicial.
 
   // A) LOGIN
   const loginForm = document.getElementById("login-form");
@@ -136,15 +163,15 @@ function setupAuthForms() {
       e.preventDefault();
       const email = document.getElementById("login-email").value;
       const pass = document.getElementById("login-password").value;
-      const btn = loginForm.querySelector('button');
+      const btn = loginForm.querySelector("button");
 
       try {
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Entrando...';
+        btn.innerHTML =
+          '<span class="spinner-border spinner-border-sm"></span> Entrando...';
 
         const { error } = await api.auth.login(email, pass);
         if (error) throw error;
-
       } catch (err) {
         Notificaciones.mostrar("Error de acceso: " + err.message, "error");
         btn.disabled = false;
@@ -160,50 +187,60 @@ function setupAuthForms() {
       e.preventDefault();
       const email = document.getElementById("register-email").value;
       const pass = document.getElementById("register-password").value;
-      const confirm = document.getElementById("register-password-confirm").value;
+      const confirm = document.getElementById(
+        "register-password-confirm"
+      ).value;
 
-      if (pass !== confirm) return Notificaciones.mostrar("Las contraseñas no coinciden", "error");
+      if (pass !== confirm)
+        return Notificaciones.mostrar("Las contraseñas no coinciden", "error");
 
-      const btn = regForm.querySelector('button');
+      const btn = regForm.querySelector("button");
       try {
-        btn.disabled = true; btn.innerText = "Registrando...";
+        btn.disabled = true;
+        btn.innerText = "Registrando...";
         const { error } = await api.auth.register(email, pass);
         if (error) throw error;
 
-        Notificaciones.mostrar("¡Cuenta creada! Por favor verifica tu correo.", "success");
-        // Opcional: Limpiar formulario
+        Notificaciones.mostrar(
+          "¡Cuenta creada! Por favor verifica tu correo.",
+          "success"
+        );
         regForm.reset();
-        btn.disabled = false; btn.innerText = "Registrarse";
-
+        btn.disabled = false;
+        btn.innerText = "Registrarse";
       } catch (err) {
         Notificaciones.mostrar("Error: " + err.message, "error");
-        btn.disabled = false; btn.innerText = "Registrarse";
+        btn.disabled = false;
+        btn.innerText = "Registrarse";
       }
     });
   }
 
-  // C) RECUPERAR CONTRASEÑA (Solicitud - Envío de correo)
+  // C) SOLICITUD DE RECUPERACIÓN (Forgot Password)
   const forgotForm = document.getElementById("forgot-password-form");
   if (forgotForm) {
     forgotForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const email = document.getElementById("recovery-email").value;
-      const btn = forgotForm.querySelector('button');
+      const btn = forgotForm.querySelector("button");
 
       try {
-        btn.disabled = true; btn.innerText = "Enviando...";
+        btn.disabled = true;
+        btn.innerText = "Enviando...";
         await api.auth.recoverPassword(email);
-        Notificaciones.mostrar("Si el correo está registrado, recibirás un enlace.", "info");
-        
-        // Cerrar modal
-        const modalEl = document.getElementById('forgotPasswordModal');
+        Notificaciones.mostrar(
+          "Si el correo está registrado, recibirás un enlace.",
+          "info"
+        );
+
+        const modalEl = document.getElementById("forgotPasswordModal");
         const modalInstance = bootstrap.Modal.getInstance(modalEl);
         if (modalInstance) modalInstance.hide();
-
       } catch (err) {
         Notificaciones.mostrar("Error: " + err.message, "error");
       } finally {
-        btn.disabled = false; btn.innerText = "Enviar Enlace";
+        btn.disabled = false;
+        btn.innerText = "Enviar Enlace";
       }
     });
   }
@@ -221,22 +258,21 @@ function setupAuthForms() {
 }
 
 // --- 2. UTILIDADES ---
-
 function setupPasswordToggles() {
-  document.querySelectorAll('.toggle-password').forEach(icon => {
-    icon.addEventListener('click', () => {
+  document.querySelectorAll(".toggle-password").forEach((icon) => {
+    icon.addEventListener("click", () => {
       const inputId = icon.dataset.target;
       const input = document.getElementById(inputId);
       if (!input) return;
 
-      if (input.type === 'password') {
-        input.type = 'text';
-        icon.classList.remove('bi-eye-slash');
-        icon.classList.add('bi-eye');
+      if (input.type === "password") {
+        input.type = "text";
+        icon.classList.remove("bi-eye-slash");
+        icon.classList.add("bi-eye");
       } else {
-        input.type = 'password';
-        icon.classList.remove('bi-eye');
-        icon.classList.add('bi-eye-slash');
+        input.type = "password";
+        icon.classList.remove("bi-eye");
+        icon.classList.add("bi-eye-slash");
       }
     });
   });
@@ -244,25 +280,30 @@ function setupPasswordToggles() {
 
 // --- 3. MENÚ MÓVIL ---
 function setupMobileNav() {
-  const mobileNavToggleBtn = document.querySelector('.header-toggle');
-  // Solo añadir listener si el botón existe y no está oculto por modo standalone
-  if (mobileNavToggleBtn && mobileNavToggleBtn.style.display !== 'none' && !mobileNavToggleBtn.dataset.listening) {
+  const mobileNavToggleBtn = document.querySelector(".header-toggle");
+
+  // Verificamos si existe Y si está visible (no oculto por updateShellMode)
+  if (
+    mobileNavToggleBtn &&
+    mobileNavToggleBtn.style.display !== "none" &&
+    !mobileNavToggleBtn.dataset.listening
+  ) {
     mobileNavToggleBtn.dataset.listening = "true";
 
-    mobileNavToggleBtn.addEventListener('click', function () {
-      document.querySelector('body').classList.toggle('mobile-nav-active');
-      document.querySelector('#header').classList.toggle('header-show');
-      this.classList.toggle('bi-list');
-      this.classList.toggle('bi-x');
+    mobileNavToggleBtn.addEventListener("click", function () {
+      document.querySelector("body").classList.toggle("mobile-nav-active");
+      document.querySelector("#header").classList.toggle("header-show");
+      this.classList.toggle("bi-list");
+      this.classList.toggle("bi-x");
     });
 
-    document.querySelectorAll('#navmenu a').forEach(navLink => {
-      navLink.addEventListener('click', () => {
-        if (document.querySelector('.mobile-nav-active')) {
-          document.querySelector('body').classList.remove('mobile-nav-active');
-          document.querySelector('#header').classList.remove('header-show');
-          mobileNavToggleBtn.classList.remove('bi-x');
-          mobileNavToggleBtn.classList.add('bi-list');
+    document.querySelectorAll("#navmenu a").forEach((navLink) => {
+      navLink.addEventListener("click", () => {
+        if (document.querySelector(".mobile-nav-active")) {
+          document.querySelector("body").classList.remove("mobile-nav-active");
+          document.querySelector("#header").classList.remove("header-show");
+          mobileNavToggleBtn.classList.remove("bi-x");
+          mobileNavToggleBtn.classList.add("bi-list");
         }
       });
     });
@@ -274,9 +315,9 @@ let notificationInterval = null;
 let cachedAlerts = [];
 
 function setupNotificationListener() {
-  const myOffcanvas = document.getElementById('offcanvasNotifications');
+  const myOffcanvas = document.getElementById("offcanvasNotifications");
   if (myOffcanvas) {
-    myOffcanvas.addEventListener('show.bs.offcanvas', renderNotificationsPanel);
+    myOffcanvas.addEventListener("show.bs.offcanvas", renderNotificationsPanel);
   }
 }
 
@@ -293,26 +334,33 @@ function stopNotificationService() {
 async function checkAlerts() {
   try {
     const alerts = await api.alerts.list();
-    const badge = document.getElementById('notification-badge');
+    const badge = document.getElementById("notification-badge");
 
     if (alerts && alerts.length > 0) {
-      if (badge) badge.classList.remove('d-none');
+      if (badge) badge.classList.remove("d-none");
     } else {
-      if (badge) badge.classList.add('d-none');
+      if (badge) badge.classList.add("d-none");
     }
     cachedAlerts = alerts || [];
-  } catch (error) { console.warn("Polling error", error); }
+  } catch (error) {
+    console.warn("Polling error", error);
+  }
 }
 
 async function renderNotificationsPanel() {
-  const container = document.getElementById('notification-list');
+  const container = document.getElementById("notification-list");
   if (!container) return;
 
-  container.innerHTML = '<div class="text-center mt-4"><div class="spinner-border text-primary"></div></div>';
+  container.innerHTML =
+    '<div class="text-center mt-4"><div class="spinner-border text-primary"></div></div>';
 
   let alerts = cachedAlerts;
   if (!alerts || alerts.length === 0) {
-    try { alerts = await api.alerts.list(); } catch (e) { /* ignore */ }
+    try {
+      alerts = await api.alerts.list();
+    } catch (e) {
+      /* ignore */
+    }
   }
 
   if (!alerts || alerts.length === 0) {
@@ -324,34 +372,60 @@ async function renderNotificationsPanel() {
     return;
   }
 
-  container.innerHTML = alerts.map(alert => `
+  container.innerHTML = alerts
+    .map(
+      (alert) => `
         <div class="list-group-item py-3" style="background: transparent; border-bottom: 1px solid rgba(255,255,255,0.1);">
             <div class="d-flex justify-content-between align-items-start">
                 <div class="me-2">
-                    <h6 class="mb-1 text-light">${getAlertIcon(alert.tipo_alerta)} ${formatAlertType(alert.tipo_alerta)}</h6>
-                    <p class="mb-1 small" style="color: rgba(255,255,255,0.7);">${alert.mensaje}</p>
-                    <small style="font-size: 0.75rem; color: rgba(255,255,255,0.3);">${new Date(alert.fecha_creacion).toLocaleString()}</small>
+                    <h6 class="mb-1 text-light">${getAlertIcon(
+                      alert.tipo_alerta
+                    )} ${formatAlertType(alert.tipo_alerta)}</h6>
+                    <p class="mb-1 small" style="color: rgba(255,255,255,0.7);">${
+                      alert.mensaje
+                    }</p>
+                    <small style="font-size: 0.75rem; color: rgba(255,255,255,0.3);">${new Date(
+                      alert.fecha_creacion
+                    ).toLocaleString()}</small>
                 </div>
-                <button class="btn btn-sm text-success btn-check-read" data-id="${alert.id_alerta}"><i class="bi bi-check-circle fs-5"></i></button>
+                <button class="btn btn-sm text-success btn-check-read" data-id="${
+                  alert.id_alerta
+                }"><i class="bi bi-check-circle fs-5"></i></button>
             </div>
         </div>
-    `).join('');
+    `
+    )
+    .join("");
 
-  container.querySelectorAll('.btn-check-read').forEach(btn => {
-    btn.addEventListener('click', async () => {
+  container.querySelectorAll(".btn-check-read").forEach((btn) => {
+    btn.addEventListener("click", async () => {
       try {
-        btn.closest('.list-group-item').style.opacity = '0.3';
+        btn.closest(".list-group-item").style.opacity = "0.3";
         await api.alerts.markAsRead(btn.dataset.id);
-        cachedAlerts = cachedAlerts.filter(a => a.id_alerta !== btn.dataset.id);
-        if (cachedAlerts.length === 0) renderNotificationsPanel(); else btn.closest('.list-group-item').remove();
-        const badge = document.getElementById('notification-badge');
-        if (cachedAlerts.length === 0 && badge) badge.classList.add('d-none');
-      } catch (err) { console.error(err); }
+        cachedAlerts = cachedAlerts.filter(
+          (a) => a.id_alerta !== btn.dataset.id
+        );
+        if (cachedAlerts.length === 0) renderNotificationsPanel();
+        else btn.closest(".list-group-item").remove();
+        const badge = document.getElementById("notification-badge");
+        if (cachedAlerts.length === 0 && badge) badge.classList.add("d-none");
+      } catch (err) {
+        console.error(err);
+      }
     });
   });
 }
 
-function getAlertIcon(t) { const i = { 'PICO_CONSUMO': '⚡', 'VAMPIRO': '🧛', 'OFFLINE': '🔌', 'ERROR': '⚠️' }; return i[t] || 'ℹ️'; }
-function formatAlertType(t) { return t ? t.replace(/_/g, ' ') : 'Alerta'; }
+function getAlertIcon(t) {
+  const i = { PICO_CONSUMO: "⚡", VAMPIRO: "🧛", OFFLINE: "🔌", ERROR: "⚠️" };
+  return i[t] || "ℹ️";
+}
+function formatAlertType(t) {
+  return t ? t.replace(/_/g, " ") : "Alerta";
+}
 
-if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}
