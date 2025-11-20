@@ -134,7 +134,7 @@ const deleteAccountModalHTML = `
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <h6 class="text-danger fw-bold mb-1"><i class="bi bi-exclamation-triangle-fill me-2"></i> Zona de Peligro</h6>
-                                        <p class="small text-muted mb-0" style="--bs-text-opacity: 1; color: rgb(255 255 255 / 75%) !important;">Eliminar tu cuenta borrará todos tus dispositivos.</p>
+                                        <p class="small text-white mb-0" style="--bs-text-opacity: 1; color: rgb(255 255 255 / 75%) !important;">Eliminar tu cuenta borrará todos tus dispositivos.</p>
                                     </div>
                                     <button class="btn btn-sm btn-outline-danger" id="btn-delete-account">Eliminar Cuenta</button>
                                 </div>
@@ -177,7 +177,7 @@ const deleteAccountModalHTML = `
                                             <input class="form-check-input" type="checkbox" role="switch" id="toggle-cfe-mode" style="width: 3em; height: 1.5em; margin-right: 10px; cursor: pointer;">
                                             <label class="form-check-label pt-1" for="toggle-cfe-mode">
                                                 <strong class="text-white">Habilitar Tarifa Escalonada (Tipo CFE)</strong>
-                                                <div class="small text-muted">Activa esto si tu costo por kWh sube después de cierto consumo.</div>
+                                                <div class="small text-white">Activa esto si tu costo por kWh sube después de cierto consumo.</div>
                                             </label>
                                         </div>
                                     </div>

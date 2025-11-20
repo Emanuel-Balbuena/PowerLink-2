@@ -12,11 +12,10 @@
 --------------------------------------------------------------*/
 /* Fonts */
 :root {
-  --default-font: "Roboto", system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --heading-font: "Raleway", sans-serif;
-  --nav-font: "Poppins", sans-serif;
+  --default-font: "Fira Sans", system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --heading-font: "Lexend", sans-serif;
+  --nav-font: "Fira Sans", sans-serif;
 }
 
 /* Global Colors - The following color variables are used throughout the website. Updating them here will change the color scheme of the entire website */
@@ -161,11 +160,38 @@ h6 {
 
 @media (max-width: 1199px) {
   .header {
-    background-color: var(--background-color);
-    border-right: 1px solid
-      color-mix(in srgb, var(--default-color), transparent 90%);
+    /* 1. Configuración Base (Sin fondo ni filtros aquí para no romper el botón) */
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+
+    /* 2. Posicionamiento (Funcionalidad) */
     width: 300px;
     left: -100%;
+    transition: left 0.3s ease-in-out;
+    z-index: 9997;
+    overflow-y: auto; /* Permitir scroll si el menú es muy largo */
+  }
+
+  /* 3. CAPA DE VIDRIO (El truco: aplicamos el diseño a un elemento virtual detrás) */
+  .header::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: -1; /* Se coloca detrás del texto */
+
+    /* ESTILO VISUAL (Aquí configuramos tu diseño de vidrio oscuro) */
+    backdrop-filter: blur(15px); /* El desenfoque real */
+    -webkit-backdrop-filter: blur(15px); /* Soporte Safari */
+    border-right: 1px solid rgba(255, 255, 255, 0.1); /* Borde sutil */
+  }
+
+  /* Cuando el menú se activa */
+  .header.header-show {
+    left: 0;
   }
 }
 
@@ -951,4 +977,52 @@ section,
   opacity: 1 !important;
   transform: none !important;
   visibility: visible !important;
+}
+
+/* ==========================================================================
+   # APP SHELL GLASS TRANSFORMATION
+   # Convierte la UI interna al estilo de la Landing
+   ========================================================================== */
+
+/* 1. REDEFINIR VARIABLES GLOBALES PARA LA APP */
+/* Al hacer esto global, afectará a dashboard.js, devices.js, etc. automáticamente */
+:root {
+  /* Cambio el color sólido por el transparente de la landing */
+  --background-color: transparent;
+  --surface-color: rgba(255, 255, 255, 0.03); /* Cristal */
+  --nav-mobile-background-color: rgba(0, 0, 0, 0.85); /* Menú móvil cristal */
+}
+
+/* 2. FORZAR FONDO DE PANTALLA (Si no copiaste el canvas, esto pone un gradiente) */
+body {
+  background: radial-gradient(circle at 50% 50%, #111827 0%, #000000 100%) fixed;
+}
+
+/* 4. INPUTS Y FORMULARIOS (Glass) */
+.form-control,
+.form-select {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+  backdrop-filter: blur(5px);
+}
+.form-control:focus,
+.form-select:focus {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+/* 5. MODALES Y OFFCANVAS (Glass) */
+.modal-content,
+.offcanvas {
+  backdrop-filter: blur(15px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 7. LIST ITEMS (Para la lista de dispositivos y notificaciones) */
+.list-group-item {
+  background-color: transparent !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+  color: #fff !important;
 }

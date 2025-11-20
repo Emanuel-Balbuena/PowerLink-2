@@ -64,11 +64,56 @@
         .offcanvas-header .btn-close {
             filter: invert(1); /* Hace la X blanca */
         }
+
+        /* --- 5. ESTILOS AUTH (LOGIN / REGISTER) --- */
+        /* Fondo general igual al resto de la app */
+        #auth-view section {
+            background: #1a1e22 !important; /* Fondo base oscuro */
+        }
+
+        /* Tarjeta Central: Estilo Sólido (Igual a Offcanvas) */
+        #auth-view .card {
+            background-color: #1a1e22 !important; 
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5) !important; /* Sombra fuerte para resaltar */
+            backdrop-filter: none !important;
+        }
+
+        /* Inputs y Campos de Texto */
+        #auth-view .form-control {
+            background-color: rgba(255, 255, 255, 0.03) !important; /* Muy sutil */
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            color: #ffffff !important;
+        }
+        
+        #auth-view .form-control:focus {
+            background-color: rgba(255, 255, 255, 0.05) !important;
+            border-color: var(--accent-color) !important;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25) !important;
+        }
+
+        /* Pestañas (Login/Register) */
+        #auth-view .nav-pills {
+            background-color: rgba(255, 255, 255, 0.03) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        }
+        
+        #auth-view .nav-link {
+            color: rgba(255, 255, 255, 0.6) !important;
+        }
+        
+        #auth-view .nav-link.active {
+            background-color: var(--accent-color) !important;
+            color: #ffffff !important;
+        }
+
+        /* Textos */
+        #auth-view h3, #auth-view h4 { color: #ffffff !important; }
+        #auth-view .text-white-50 { color: rgba(255, 255, 255, 0.6) !important; }
     </style>
 </head>
 
-<body class="index-page">
-    
+<body class="index-page">    
     <div id="app-shell" class="d-none">
         <div class="top-controls">
             <button class="btn btn-floating-notify position-relative" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNotifications">
@@ -88,8 +133,8 @@
                     <li><a href="#devices"><i class="bi bi-cpu navicon"></i><span>Dispositivos</span></a></li>
                     <li><a href="#settings"><i class="bi bi-gear navicon"></i><span>Configuración</span></a></li>
                     <li style="margin-top: 25px;">
-                        <a href="#" id="logout-button" style="background-color: var(--yellow-accent); color: var(--background-color); justify-content: center;">
-                            <i class="bi bi-box-arrow-left navicon" style="color: var(--background-color);"></i>
+                        <a href="#" id="logout-button" style="background-color: var(--yellow-accent); color: black; justify-content: center;">
+                            <i class="bi bi-box-arrow-left navicon" style="color: black"></i>
                             <span>Cerrar Sesión</span>
                         </a>
                     </li>
