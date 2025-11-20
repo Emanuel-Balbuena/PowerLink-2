@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>PowerLink2 - Tu Energía Inteligente</title>
+    <meta
+      content="Gestión inteligente de energía IoT con ESP32"
+      name="description"
+    />
+    <meta content="IoT, Energía, ESP32, Domótica, Smart Home" name="keywords" />
+
+    <link href="assets/img/favicon.png" rel="icon" />
+    <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon" />
+
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Lexend:wght@100..900&display=swap"
+      rel="stylesheet"
+    />
+
+    <link
+      href="assets/vendor/bootstrap/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="assets/vendor/bootstrap-icons/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+    <link href="assets/vendor/aos/aos.css" rel="stylesheet" />
+    <link
+      href="assets/vendor/glightbox/css/glightbox.min.css"
+      rel="stylesheet"
+    />
+    <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet" />
+
+    <link href="assets/css/main.css" rel="stylesheet" />
+
+    <style>
+      :root {
+        /* El background color base lo dejamos para fallbacks, pero usaremos transparencia */
+        --background-color: #0a0b0e;
+        --surface-color: rgba(255, 255, 255, 0.03);
+        --accent-color: #3b82f6;
+        --accent-glow: rgba(59, 130, 246, 0.5);
+        --text-color: #ffffff;
+        --text-muted: rgba(255, 255, 255, 0.7);
+        --yellow-accent: #fbbf24;
+
+        --heading-font: "Lexend", sans-serif;
+        --body-font: "Fira Sans", sans-serif;
+      }
+
+      /* --- FONDO 3D EN TODA LA PÁGINA --- */
+      /* Canvas fijo al fondo */
+      #canvas-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+        background: radial-gradient(
+          circle at 50% 50%,
+          #111827 0%,
+          #000000 100%
+        );
+      }
+
+      /* HACER TODO TRANSPARENTE PARA QUE SE VEA EL CANVAS */
+      body,
+      .main,
+      .section,
+      #hero,
+      #about,
+      #services,
+      #portfolio,
+      #team,
+      #contact,
+      #pricing {
+        background-color: transparent !important;
+        background: transparent !important;
+      }
+
+      /* Base Textos */
+      body {
+        color: var(--text-color) !important;
+        font-family: var(--body-font) !important;
+      }
+
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6 {
+        font-family: var(--heading-font) !important;
+      }
+      p {
+        font-size: 1.1rem !important;
+        line-height: 1.7;
+        color: var(--text-muted);
+      }
+
+      /* --- SPOTLIGHT CARD (Tus tarjetas) --- */
+      .spotlight-card {
+        background-color: var(--surface-color) !important;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.3s ease, border-color 0.3s ease;
+        backdrop-filter: blur(
+          10px
+        ); /* Efecto cristal para que se vea borroso el fondo animado detrás */
+        -webkit-backdrop-filter: blur(10px);
+      }
+      .spotlight-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: 16px;
+        padding: 1.5px;
+        width: 100%;
+        background: radial-gradient(
+          800px circle at var(--mouse-x) var(--mouse-y),
+          rgba(255, 255, 255, 0.4),
+          transparent 40%
+        );
+        -webkit-mask: linear-gradient(#fff 0 0) content-box,
+          linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.5s ease;
+      }
+      .spotlight-card:hover::before {
+        opacity: 1;
+      }
+      .spotlight-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        border-color: rgba(255, 255, 255, 0.1);
+      }
+
+      /* --- CORRECCIÓN DEL BOTÓN MÓVIL (IZQUIERDA) --- */
+      .header .header-toggle {
+        left: 15px !important; /* Forzar izquierda */
+        right: auto !important; /* Anular derecha */
+        top: 15px !important;
+        background-color: var(--accent-color) !important;
+        color: #fff !important;
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        z-index: 99999 !important; /* Siempre visible */
+        box-shadow: 0 0 15px var(--accent-glow);
+      }
+
+      /* --- TARJETAS DE PRECIOS (DISEÑO PREMIUM) --- */
+      .pricing-item {
+        background: rgba(255, 255, 255, 0.02); /* Muy transparente */
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 24px;
+        padding: 3.5rem 2.5rem;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        backdrop-filter: blur(15px); /* Cristal fuerte */
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .pricing-item:hover {
+        transform: translateY(-10px) scale(1.02);
+        background: rgba(255, 255, 255, 0.05);
+        border-color: var(--accent-color);
+        box-shadow: 0 20px 50px rgba(59, 130, 246, 0.15);
+      }
+
+      .pricing-item h3 {
+        font-size: 1.4rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        margin-bottom: 20px;
+        color: rgba(255, 255, 255, 0.6);
+      }
+
+      /* Precio con Degradado */
+      .pricing-item h4 {
+        font-size: 4rem; /* Gigante */
+        font-weight: 800;
+        margin-bottom: 30px;
+        background: linear-gradient(
+          135deg,
+          #ffffff 0%,
+          var(--accent-color) 100%
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        display: inline-block;
+      }
+
+      .pricing-item h4 sup {
+        font-size: 1.5rem;
+        top: -1em;
+        color: var(--text-muted);
+        -webkit-text-fill-color: var(--text-muted);
+      }
+      .pricing-item h4 span {
+        font-size: 1.2rem;
+        color: var(--text-muted);
+        font-weight: 400;
+        -webkit-text-fill-color: var(--text-muted);
+      }
+
+      .pricing-item ul {
+        flex-grow: 1;
+        margin-bottom: 30px;
+        padding: 0;
+        list-style: none;
+      }
+      .pricing-item ul li {
+        padding: 10px 0;
+        font-size: 1.1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      .pricing-item ul li i {
+        margin-right: 10px;
+        font-size: 1.3rem;
+      }
+      .pricing-item ul li i.bi-check {
+        color: var(--accent-color);
+      }
+      .pricing-item ul li i.bi-x {
+        color: rgba(255, 255, 255, 0.3);
+      }
+
+      /* Tarjeta Destacada */
+      .pricing-item.featured {
+        background: linear-gradient(
+          180deg,
+          rgba(59, 130, 246, 0.1) 0%,
+          rgba(0, 0, 0, 0) 100%
+        );
+        border: 1px solid var(--accent-color);
+        box-shadow: 0 0 30px rgba(59, 130, 246, 0.2);
+        transform: scale(1.05);
+        z-index: 2;
+      }
+      .pricing-item.featured:hover {
+        transform: scale(1.08) translateY(-10px);
+        box-shadow: 0 0 50px var(--accent-glow);
+      }
+      .pricing-item.featured h4 {
+        background: linear-gradient(
+          135deg,
+          #ffffff 0%,
+          var(--yellow-accent) 100%
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      /* Botón Pricing */
+      .buy-btn {
+        width: 100%;
+        display: block;
+        padding: 15px;
+        border-radius: 12px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        text-align: center;
+        transition: all 0.3s ease;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.05);
+        color: #fff;
+      }
+      .buy-btn:hover {
+        background: var(--accent-color);
+        border-color: var(--accent-color);
+        box-shadow: 0 0 20px var(--accent-glow);
+        color: #fff;
+      }
+      .featured .buy-btn {
+        background: var(--accent-color);
+        border-color: var(--accent-color);
+        box-shadow: 0 0 15px var(--accent-glow);
+      }
+      .featured .buy-btn:hover {
+        background: var(--yellow-accent);
+        border-color: var(--yellow-accent);
+        color: #000;
+      }
+
+      /* --- OTROS AJUSTES --- */
+      #hero h2 {
+        font-size: 4rem;
+        font-weight: 800;
+        line-height: 1.1;
+        text-shadow: 0 0 40px rgba(5, 99, 187, 0.3);
+      }
+
+      /* Texto Hero Grande */
+      #hero p {
+        font-size: 1.7rem !important;
+        font-weight: 600;
+        line-height: 1.4;
+        color: #e2e8f0;
+        margin-top: 20px;
+      }
+
+      .tech-stack {
+        background: rgba(255, 255, 255, 0.03) !important;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(5px);
+      }
+
+      /* Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #0a0b0e;
+      } /* Track transparente para ver el fondo */
+      ::-webkit-scrollbar-thumb {
+        background: #334155;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--accent-color);
+      }
+
+      strong {
+        color: #fff;
+        font-weight: 600;
+      }
+      .text-white-small {
+        font-size: 1rem !important;
+        color: #cbd5e1;
+      }
+      .service-item .icon {
+        background: transparent !important;
+        box-shadow: none !important;
+      }
+      .service-item .icon svg {
+        filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.1));
+      }
+      .navmenu a span,
+      .navmenu a i {
+        color: inherit;
+      }
+
+      /* Footer Semi-Transparente */
+      #footer {
+        background: rgba(0, 0, 0, 0.7) !important;
+        backdrop-filter: blur(10px);
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+      }
+    </style>
+
+    <script>
+      (function () {
+        const hash = window.location.hash;
+        if (hash && hash.includes("access_token=") && hash.includes("type=")) {
+          document.documentElement.style.display = "none";
+          window.location.href = "app.html" + hash;
+        }
+      })();
+    </script>
+  </head>
+
+  <body class="index-page">
+    <canvas id="canvas-container"></canvas>
+
+    <header
+      id="header"
+      class="header d-flex flex-column justify-content-center"
+    >
+      <i class="header-toggle d-xl-none bi bi-list"></i>
+      <nav id="navmenu" class="navmenu">
+        <ul>
+          <li>
+            <a href="#hero" class="active"
+              ><i class="bi bi-house navicon"></i><span>Inicio</span></a
+            >
+          </li>
+          <li>
+            <a href="#about"
+              ><i class="bi bi-info-circle navicon"></i><span>¿Qué es?</span></a
+            >
+          </li>
+          <li>
+            <a href="#services"
+              ><i class="bi bi-hdd-network navicon"></i
+              ><span>Funciones</span></a
+            >
+          </li>
+          <li>
+            <a href="#pricing"
+              ><i class="bi bi-tag navicon"></i><span>Precios</span></a
+            >
+          </li>
+          <li>
+            <a href="#portfolio"
+              ><i class="bi bi-images navicon"></i><span>Galería</span></a
+            >
+          </li>
+          <li>
+            <a href="#team"
+              ><i class="bi bi-people navicon"></i><span>Equipo</span></a
+            >
+          </li>
+          <li>
+            <a href="#contact"
+              ><i class="bi bi-envelope navicon"></i><span>Contacto</span></a
+            >
+          </li>
+          <li style="margin-top: 15px">
+            <a
+              href="app.html"
+              style="
+                background-color: var(--yellow-accent);
+                color: #000;
+                justify-content: center;
+                font-weight: bold;
+              "
+            >
+              <i
+                class="bi bi-box-arrow-in-right navicon"
+                style="color: #000"
+              ></i>
+              <span>Acceder</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </header>
+
+    <main class="main">
+      <section id="hero" class="hero section">
+        <div
+          class="container"
+          data-aos="zoom-out"
+          style="position: relative; z-index: 2"
+        >
+          <div class="row justify-content-center">
+            <div class="col-lg-10 text-center">
+              <h2 style="text-shadow: 0 0 40px rgba(5, 99, 187, 0.3)">
+                PowerLink <span style="color: var(--accent-color)">2</span>
+              </h2>
+              <p>
+                <span
+                  class="typed"
+                  data-typed-items="Tu consumo bajo control, Inteligencia para tu hogar, Ahorro en tu factura, Detección de anomalías"
+                ></span>
+                <span
+                  class="typed-cursor typed-cursor--blink"
+                  aria-hidden="true"
+                ></span>
+              </p>
+
+              <div
+                class="tech-stack mt-5 p-4 rounded-pill d-inline-flex align-items-center justify-content-center gap-4"
+              >
+                <span
+                  class="text-white text-uppercase fw-bold small"
+                  style="letter-spacing: 2px; font-size: 0.7rem"
+                  >Powered By</span
+                >
+                <div
+                  style="
+                    width: 1px;
+                    height: 20px;
+                    background: rgba(255, 255, 255, 0.2);
+                  "
+                ></div>
+                <i
+                  class="bi bi-filetype-js"
+                  style="font-size: 24px; color: #f7df1e"
+                  title="JavaScript"
+                ></i>
+                <i
+                  class="bi bi-bootstrap"
+                  style="font-size: 24px; color: #7952b3"
+                  title="Bootstrap 5"
+                ></i>
+                <i
+                  class="bi bi-cpu-fill"
+                  style="font-size: 24px; color: #fff"
+                  title="ESP32 Hardware"
+                ></i>
+                <i
+                  class="bi bi-cloud-fill"
+                  style="font-size: 24px; color: #3ecf8e"
+                  title="Supabase"
+                ></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="about" class="about section">
+        <div class="container section-title" data-aos="fade-up">
+          <h2>La Evolución de tu Energía</h2>
+          <p>
+            No es solo un medidor. Es un cerebro digital para tu red eléctrica.
+          </p>
+        </div>
+
+        <div class="container" data-aos="fade-up" data-aos-delay="100">
+          <div class="row gy-4 justify-content-center">
+            <div class="col-lg-8 content text-center">
+              <h3 class="mb-4 text-white">Control Absoluto. Ahorro Real.</h3>
+              <p class="fst-italic py-3 text-white-small">
+                Con nuestro dispositivo conectado y una plataforma de análisis
+                en la nube, PowerLink2 transforma datos invisibles en decisiones
+                inteligentes.
+              </p>
+
+              <div class="row g-3 mt-3 text-start">
+                <div class="col-md-6">
+                  <div class="spotlight-card p-4 h-100">
+                    <h4 class="text-primary mb-3">
+                      <i class="bi bi-cpu me-2"></i> Hardware
+                    </h4>
+                    <ul class="list-unstyled text-white-small">
+                      <li class="mb-2">
+                        <i class="bi bi-check2-circle text-success me-2"></i>
+                        Medidor Wi-Fi (ESP32)
+                      </li>
+                      <li class="mb-2">
+                        <i class="bi bi-check2-circle text-success me-2"></i>
+                        Sensor No Invasivo
+                      </li>
+                      <li>
+                        <i class="bi bi-check2-circle text-success me-2"></i>
+                        Relé de Corte Remoto
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="spotlight-card p-4 h-100">
+                    <h4 class="text-warning mb-3">
+                      <i class="bi bi-cloud-check me-2"></i> Software
+                    </h4>
+                    <ul class="list-unstyled text-white-small">
+                      <li class="mb-2">
+                        <i class="bi bi-check2-circle text-warning me-2"></i>
+                        Web App Progresiva
+                      </li>
+                      <li class="mb-2">
+                        <i class="bi bi-check2-circle text-warning me-2"></i>
+                        Detección de Fugas
+                      </li>
+                      <li>
+                        <i class="bi bi-check2-circle text-warning me-2"></i>
+                        Google Home & Alexa
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="impacto" class="impacto section">
+        <div class="container section-title" data-aos="fade-up">
+          <h2>Impacto Global</h2>
+          <p>
+            Tecnología alineada con los Objetivos de Desarrollo Sostenible
+            (ODS).
+          </p>
+        </div>
+        <div class="container" data-aos="fade-up" data-aos-delay="100">
+          <div class="row gy-4 justify-content-center">
+            <div class="col-lg-3 col-md-6">
+              <div class="card h-100 text-center p-4 spotlight-card">
+                <i
+                  class="bi bi-lightbulb mb-3"
+                  style="font-size: 3rem; color: var(--yellow-accent)"
+                ></i>
+                <h4 class="text-white fw-bold fs-5">ODS 7</h4>
+                <p class="small text-white-small">
+                  Energía Asequible y No Contaminante.
+                </p>
+              </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+              <div class="card h-100 text-center p-4 spotlight-card">
+                <i
+                  class="bi bi-building mb-3"
+                  style="font-size: 3rem; color: #0dcaf0"
+                ></i>
+                <h4 class="text-white fw-bold fs-5">ODS 11</h4>
+                <p class="small text-white-small">
+                  Ciudades y Comunidades Sostenibles.
+                </p>
+              </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+              <div class="card h-100 text-center p-4 spotlight-card">
+                <i
+                  class="bi bi-recycle mb-3"
+                  style="font-size: 3rem; color: #20c997"
+                ></i>
+                <h4 class="text-white fw-bold fs-5">ODS 12</h4>
+                <p class="small text-white-small">
+                  Producción y Consumo Responsables.
+                </p>
+              </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+              <div class="card h-100 text-center p-4 spotlight-card">
+                <i
+                  class="bi bi-globe-americas mb-3"
+                  style="font-size: 3rem; color: #0d6efd"
+                ></i>
+                <h4 class="text-white fw-bold fs-5">ODS 13</h4>
+                <p class="small text-white-small">Acción por el Clima.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="services" class="services section">
+        <div class="container section-title" data-aos="fade-up">
+          <h2>Funciones</h2>
+          <p>Herramientas avanzadas diseñadas para darte el control total.</p>
+        </div>
+        <div class="container">
+          <div class="row gy-4">
+            <div
+              class="col-lg-4 col-md-6"
+              data-aos="fade-up"
+              data-aos-delay="100"
+            >
+              <div
+                class="service-item item-cyan position-relative spotlight-card"
+              >
+                <div class="icon">
+                  <svg
+                    width="100"
+                    height="100"
+                    viewBox="0 0 600 600"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      stroke="none"
+                      stroke-width="0"
+                      fill="#f5f5f5"
+                      d="M300,521.0016835830174C376.1290562159157,517.8887921683347,466.0731472004068,529.7835943286574,510.70327084640275,468.03025145048787C554.3714126377745,407.6079735673963,508.03601936045806,328.9844924480964,491.2728898941984,256.3432110539036C474.5976632858925,184.082847569629,479.9380746630129,96.60480741107993,416.23090153303,58.64404602377083C348.86323505073057,18.502131276798302,261.93793281208167,40.57373210992963,193.5410806939664,78.93577620505333C130.42746243093433,114.334589627462,98.30271207620316,179.96522072025542,76.75703585869454,249.04625023123273C51.97151888228291,328.5150500222984,13.704378332031375,421.85034740162234,66.52175969318436,486.19268352777647C119.04800174914682,550.1803526380478,217.28368757567262,524.383925680826,300,521.0016835830174"
+                    ></path>
+                  </svg>
+                  <i class="bi bi-graph-up-arrow"></i>
+                </div>
+                <a href="#" class="stretched-link">
+                  <h3>Detección de Anomalías</h3>
+                </a>
+                <p>
+                  El sistema aprende de tus dispositivos y te alerta sobre picos
+                  de consumo.
+                </p>
+              </div>
+            </div>
+            <div
+              class="col-lg-4 col-md-6"
+              data-aos="fade-up"
+              data-aos-delay="200"
+            >
+              <div
+                class="service-item item-orange position-relative spotlight-card"
+              >
+                <div class="icon">
+                  <svg
+                    width="100"
+                    height="100"
+                    viewBox="0 0 600 600"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      stroke="none"
+                      stroke-width="0"
+                      fill="#f5f5f5"
+                      d="M300,582.0697525312426C382.5290701553225,586.8405444964366,449.9789794690241,525.3245884688669,502.5850820975895,461.55621195738473C556.606425686781,396.0723002908107,615.8543463187945,314.28637112970534,586.6730223649479,234.56875336149918C558.9533121215079,158.8439757836574,454.9685369536778,164.00468322053177,381.49747125262974,130.76875717737553C312.15926192815925,99.40240125094834,248.97055460311594,18.661163978235184,179.8680185752513,50.54337015887873C110.5421016452524,82.52863877960104,119.82277516462835,180.83849132639028,109.12597500060166,256.43424936330496C100.08760227029461,320.3096726198365,92.17705696193138,384.0621239912766,124.79988738764834,439.7174275375508C164.83382741302287,508.01625554203684,220.96474134820875,577.5009287672846,300,582.0697525312426"
+                    ></path>
+                  </svg>
+                  <i class="bi bi-calculator"></i>
+                </div>
+                <a href="#" class="stretched-link">
+                  <h3>Predicción de Costos</h3>
+                </a>
+                <p>
+                  Proyecta tu factura mensual y evita sorpresas al final del
+                  mes.
+                </p>
+              </div>
+            </div>
+            <div
+              class="col-lg-4 col-md-6"
+              data-aos="fade-up"
+              data-aos-delay="300"
+            >
+              <div
+                class="service-item item-teal position-relative spotlight-card"
+              >
+                <div class="icon">
+                  <svg
+                    width="100"
+                    height="100"
+                    viewBox="0 0 600 600"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      stroke="none"
+                      stroke-width="0"
+                      fill="#f5f5f5"
+                      d="M300,541.5067337569781C382.14930387511276,545.0595476570109,479.8736841581634,548.3450877840088,526.4010558755058,480.5488172755941C571.5218469581645,414.80211281144784,517.5187510058486,332.0715597781072,496.52539010469104,255.14436215662573C477.37192572678356,184.95920475031193,473.57363656557914,105.61284051026155,413.0603344069578,65.22779650032875C343.27470386102294,18.654635553484475,251.2091493199835,5.337323636656869,175.0934190732945,40.62881213300186C97.87086631185822,76.43348514350839,51.98124368387456,156.15599469081315,36.44837278890362,239.84606092416172C21.716077023791087,319.22268207091537,43.775223500013084,401.1760424656574,96.891909868211,461.97329694683043C147.22146801428983,519.5804099606455,223.5754009179313,538.201503339737,300,541.5067337569781"
+                    ></path>
+                  </svg>
+                  <i class="bi bi-people"></i>
+                </div>
+                <a href="#" class="stretched-link">
+                  <h3>Inteligencia Comunitaria</h3>
+                </a>
+                <p>
+                  Compara tu consumo con dispositivos similares anónimamente.
+                </p>
+              </div>
+            </div>
+            <div
+              class="col-lg-4 col-md-6"
+              data-aos="fade-up"
+              data-aos-delay="400"
+            >
+              <div
+                class="service-item item-red position-relative spotlight-card"
+              >
+                <div class="icon">
+                  <svg
+                    width="100"
+                    height="100"
+                    viewBox="0 0 600 600"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      stroke="none"
+                      stroke-width="0"
+                      fill="#f5f5f5"
+                      d="M300,503.46388370962813C374.79870501325706,506.71871716319447,464.8034551963731,527.1746412648533,510.4981551193396,467.86667711651364C555.9287308511215,408.9015244558933,512.6030010748507,327.5744911775523,490.211057578863,256.5855673507754C471.097692560561,195.9906835881958,447.69079081568157,138.11976852964426,395.19560036434837,102.3242989838813C329.3053358748298,57.3949838291264,248.02791733380457,8.279543830951368,175.87071277845988,42.242879143198664C103.41431057327972,76.34704239035025,93.79494320519305,170.9812938413882,81.28167332365135,250.07896920659033C70.17666984294237,320.27484674793965,64.84698225790005,396.69656628748305,111.28512138212992,450.4950937839243C156.20124167950087,502.5303643271138,231.32542653798444,500.4755392045468,300,503.46388370962813"
+                    ></path>
+                  </svg>
+                  <i class="bi bi-toggles"></i>
+                </div>
+                <a href="#" class="stretched-link">
+                  <h3>Control Remoto Total</h3>
+                </a>
+                <p>
+                  Apaga o enciende tus dispositivos desde cualquier parte del
+                  mundo.
+                </p>
+              </div>
+            </div>
+            <div
+              class="col-lg-4 col-md-6"
+              data-aos="fade-up"
+              data-aos-delay="500"
+            >
+              <div
+                class="service-item item-indigo position-relative spotlight-card"
+              >
+                <div class="icon">
+                  <svg
+                    width="100"
+                    height="100"
+                    viewBox="0 0 600 600"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      stroke="none"
+                      stroke-width="0"
+                      fill="#f5f5f5"
+                      d="M300,532.3542879108572C369.38199826031484,532.3153073249985,429.10787420159085,491.63046689027357,474.5244479745417,439.17860296908856C522.8885846962883,383.3225815378663,569.1668002868075,314.3205725914397,550.7432151929288,242.7694973846089C532.6665558377875,172.5657663291529,456.2379748765914,142.6223662098291,390.3689995646985,112.34683881706744C326.66090330228417,83.06452184765237,258.84405631176094,53.51806209861945,193.32584062364296,78.48882559362697C121.61183558270385,105.82097193414197,62.805066853699245,167.19869350419734,48.57481801355237,242.6138429142374C34.843463184063346,315.3850353017275,76.69343916112496,383.4422959591041,125.22947124332185,439.3748458443577C170.7312796277747,491.8107796887764,230.57421082200815,532.3932930995766,300,532.3542879108572"
+                    ></path>
+                  </svg>
+                  <i class="bi bi-plug-fill"></i>
+                </div>
+                <a href="#" class="stretched-link">
+                  <h3>Consumo Vampiro</h3>
+                </a>
+                <p>Descubre y elimina consumos fantasma para ahorrar dinero.</p>
+              </div>
+            </div>
+            <div
+              class="col-lg-4 col-md-6"
+              data-aos="fade-up"
+              data-aos-delay="600"
+            >
+              <div
+                class="service-item item-pink position-relative spotlight-card"
+              >
+                <div class="icon">
+                  <svg
+                    width="100"
+                    height="100"
+                    viewBox="0 0 600 600"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      stroke="none"
+                      stroke-width="0"
+                      fill="#f5f5f5"
+                      d="M300,566.797414625762C385.7384707136149,576.1784315230908,478.7894351017131,552.8928747891023,531.9192734346935,484.94944893311C584.6109503024035,417.5663521118492,582.489472248146,322.67544863468447,553.9536738515405,242.03673114598146C529.1557734026468,171.96086150256528,465.24506316201064,127.66468636344209,395.9583748389544,100.7403814666027C334.2173773831606,76.7482773500951,269.4350130405921,84.62216499799875,207.1952322260088,107.2889140133804C132.92018162631612,134.33871894543012,41.79353780512637,160.00259165414826,22.644507872594943,236.69541883565114C3.319112789854554,314.0945973066697,72.72355303640163,379.243833228382,124.04198916343866,440.3218312028393C172.9286146004772,498.5055451809895,224.45579914871206,558.5317968840102,300,566.797414625762"
+                    ></path>
+                  </svg>
+                  <i class="bi bi-google"></i>
+                </div>
+                <a href="#" class="stretched-link">
+                  <h3>Integración Smart-Home</h3>
+                </a>
+                <p>
+                  Conecta con Google Home y Alexa para controlar todo con tu
+                  voz.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="pricing" class="pricing section">
+        <div class="container section-title" data-aos="fade-up">
+          <h2>Planes y Precios</h2>
+          <p>Elige la mejor opción para el control de tu hogar.</p>
+        </div>
+
+        <div class="container">
+          <div class="row gy-4">
+            <div class="col-lg-4" data-aos="zoom-in" data-aos-delay="100">
+              <div class="pricing-item">
+                <h3>Estándar</h3>
+                <h4><sup>$</sup>0<span> / mes</span></h4>
+                <p class="text-white-small mb-4">
+                  Incluido con tu dispositivo PowerLink2 ($1,000 MXN).
+                </p>
+                <ul>
+                  <li><i class="bi bi-check"></i> Monitoreo en Tiempo Real</li>
+                  <li><i class="bi bi-check"></i> Control Remoto (On/Off)</li>
+                  <li><i class="bi bi-check"></i> Historial de 24 Horas</li>
+                  <li><i class="bi bi-check"></i> Alertas Básicas</li>
+                  <li class="na"><i class="bi bi-x"></i> Alexa/Google</li>
+                  <li class="na">
+                    <i class="bi bi-x"></i> Predicción de Costos
+                  </li>
+                </ul>
+                <a href="#contact" class="buy-btn">Adquirir Dispositivo</a>
+              </div>
+            </div>
+            <div class="col-lg-4" data-aos="zoom-in" data-aos-delay="200">
+              <div class="pricing-item featured">
+                <h3 style="color: var(--yellow-accent); font-weight: 800">
+                  Power Pro
+                </h3>
+                <h4><sup>$</sup>69<span> / mes</span></h4>
+                <p class="text-white-small mb-4">
+                  Desbloquea la IA y control por voz.
+                </p>
+                <ul>
+                  <li>
+                    <i class="bi bi-check"></i>
+                    <strong>Todo lo del plan Estándar</strong>
+                  </li>
+                  <li><i class="bi bi-check"></i> Historial Ilimitado</li>
+                  <li><i class="bi bi-check"></i> Predicción CFE</li>
+                  <li><i class="bi bi-check"></i> Consumo "Vampiro"</li>
+                  <li><i class="bi bi-check"></i> Alexa & Google</li>
+                  <li><i class="bi bi-check"></i> Exportar Excel/CSV</li>
+                </ul>
+                <a href="app.html#settings" class="buy-btn">Suscribirse</a>
+              </div>
+            </div>
+            <div class="col-lg-4" data-aos="zoom-in" data-aos-delay="300">
+              <div class="pricing-item">
+                <h3>Lifetime</h3>
+                <h4><sup>$</sup>1,499<span> / único</span></h4>
+                <p class="text-white-small mb-4">
+                  Acceso de por vida sin mensualidades.
+                </p>
+                <ul>
+                  <li>
+                    <i class="bi bi-check"></i>
+                    <strong>Todas las funciones Pro</strong>
+                  </li>
+                  <li><i class="bi bi-check"></i> Sin pagos recurrentes</li>
+                  <li><i class="bi bi-check"></i> Futuras actualizaciones</li>
+                  <li><i class="bi bi-check"></i> Soporte Prioritario</li>
+                  <li><i class="bi bi-check"></i> Insignia "Fundador"</li>
+                </ul>
+                <a href="#contact" class="buy-btn">Comprar Licencia</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="portfolio" class="portfolio section">
+        <div class="container section-title" data-aos="fade-up">
+          <h2>Galería</h2>
+          <p>Un vistazo a la interfaz que te da el control.</p>
+        </div>
+        <div class="container">
+          <div
+            class="isotope-layout"
+            data-default-filter="*"
+            data-layout="masonry"
+            data-sort="original-order"
+          >
+            <ul
+              class="portfolio-filters isotope-filters"
+              data-aos="fade-up"
+              data-aos-delay="100"
+            >
+              <li data-filter="*" class="filter-active">Todo</li>
+              <li data-filter=".filter-app">Dashboard</li>
+              <li data-filter=".filter-product">Móvil</li>
+              <li data-filter=".filter-branding">Configuración</li>
+            </ul>
+            <div
+              class="row gy-4 isotope-container"
+              data-aos="fade-up"
+              data-aos-delay="200"
+            >
+              <div
+                class="col-lg-4 col-md-6 portfolio-item isotope-item filter-app"
+              >
+                <div
+                  class="portfolio-content h-100 rounded overflow-hidden spotlight-card"
+                >
+                  <img
+                    src="assets/img/masonry-portfolio/masonry-portfolio-1.jpg"
+                    class="img-fluid"
+                    alt=""
+                  />
+                  <div class="portfolio-info">
+                    <h4>Dashboard</h4>
+                    <p>Vista general</p>
+                    <a
+                      href="assets/img/masonry-portfolio/masonry-portfolio-1.jpg"
+                      class="glightbox preview-link"
+                      ><i class="bi bi-zoom-in"></i
+                    ></a>
+                  </div>
+                </div>
+              </div>
+              <div
+                class="col-lg-4 col-md-6 portfolio-item isotope-item filter-product"
+              >
+                <div
+                  class="portfolio-content h-100 rounded overflow-hidden spotlight-card"
+                >
+                  <img
+                    src="assets/img/masonry-portfolio/masonry-portfolio-2.jpg"
+                    class="img-fluid"
+                    alt=""
+                  />
+                  <div class="portfolio-info">
+                    <h4>Móvil</h4>
+                    <p>Responsive</p>
+                    <a
+                      href="assets/img/masonry-portfolio/masonry-portfolio-2.jpg"
+                      class="glightbox preview-link"
+                      ><i class="bi bi-zoom-in"></i
+                    ></a>
+                  </div>
+                </div>
+              </div>
+              <div
+                class="col-lg-4 col-md-6 portfolio-item isotope-item filter-branding"
+              >
+                <div
+                  class="portfolio-content h-100 rounded overflow-hidden spotlight-card"
+                >
+                  <img
+                    src="assets/img/masonry-portfolio/masonry-portfolio-3.jpg"
+                    class="img-fluid"
+                    alt=""
+                  />
+                  <div class="portfolio-info">
+                    <h4>Ajustes</h4>
+                    <p>Tarifas CFE</p>
+                    <a
+                      href="assets/img/masonry-portfolio/masonry-portfolio-3.jpg"
+                      class="glightbox preview-link"
+                      ><i class="bi bi-zoom-in"></i
+                    ></a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="team" class="team section">
+        <div class="container section-title" data-aos="fade-up">
+          <h2>El Equipo</h2>
+          <p>Ingeniería y diseño.</p>
+        </div>
+        <div class="container" data-aos="fade-up" data-aos-delay="100">
+          <div class="row gy-4 justify-content-center">
+            <div class="col-lg-3 col-md-6">
+              <div class="team-member text-center rounded p-4 spotlight-card">
+                <img
+                  src="assets/img/team/member-1.jpg"
+                  class="img-fluid rounded-circle mb-3"
+                  style="
+                    width: 120px;
+                    height: 120px;
+                    object-fit: cover;
+                    border: 2px solid var(--accent-color);
+                  "
+                />
+                <h4 class="text-white fs-5">Samuel J.</h4>
+                <p class="fst-italic text-white-small small">
+                  Líder, Arquitecto de Software
+                </p>
+              </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+              <div class="team-member text-center rounded p-4 spotlight-card">
+                <img
+                  src="assets/img/team/member-2.jpg"
+                  class="img-fluid rounded-circle mb-3"
+                  style="
+                    width: 120px;
+                    height: 120px;
+                    object-fit: cover;
+                    border: 2px solid var(--accent-color);
+                  "
+                />
+                <h4 class="text-white fs-5">Emanuel B.</h4>
+                <p class="fst-italic text-white-small small">Desarrollador Web Fullstack</p>
+              </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+              <div class="team-member text-center rounded p-4 spotlight-card">
+                <img
+                  src="assets/img/team/member-3.jpg"
+                  class="img-fluid rounded-circle mb-3"
+                  style="
+                    width: 120px;
+                    height: 120px;
+                    object-fit: cover;
+                    border: 2px solid var(--accent-color);
+                  "
+                />
+                <h4 class="text-white fs-5">Saul S.</h4>
+                <p class="fst-italic text-white-small small">Desarrollador de Dispositivo</p>
+              </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+              <div class="team-member text-center rounded p-4 spotlight-card">
+                <img
+                  src="assets/img/team/member-4.jpg"
+                  class="img-fluid rounded-circle mb-3"
+                  style="
+                    width: 120px;
+                    height: 120px;
+                    object-fit: cover;
+                    border: 2px solid var(--accent-color);
+                  "
+                />
+                <h4 class="text-white fs-5">Jesús P.</h4>
+                <p class="fst-italic text-white-small small">Diseñador Gráfico, Documentación</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="contact" class="contact section">
+        <div class="container section-title" data-aos="fade-up">
+          <h2>Contacto</h2>
+          <p>Escríbenos para adquirir tu dispositivo.</p>
+        </div>
+        <div class="container" data-aos="fade" data-aos-delay="100">
+          <div class="row gy-4">
+            <div class="col-lg-6">
+              <form
+                action="#"
+                method="post"
+                class="php-email-form rounded p-4 spotlight-card"
+              >
+                <div class="row gy-4">
+                  <div class="col-md-6">
+                    <input
+                      type="text"
+                      name="name"
+                      class="form-control"
+                      placeholder="Nombre"
+                      required
+                    />
+                  </div>
+                  <div class="col-md-6">
+                    <input
+                      type="email"
+                      class="form-control"
+                      name="email"
+                      placeholder="Email"
+                      required
+                    />
+                  </div>
+                  <div class="col-md-12">
+                    <input
+                      type="text"
+                      class="form-control"
+                      name="subject"
+                      placeholder="Asunto"
+                      required
+                    />
+                  </div>
+                  <div class="col-md-12">
+                    <textarea
+                      class="form-control"
+                      name="message"
+                      rows="6"
+                      placeholder="Mensaje"
+                      required
+                    ></textarea>
+                  </div>
+                  <div class="col-md-12 text-center">
+                    <div class="loading">Cargando...</div>
+                    <div class="error-message"></div>
+                    <div class="sent-message">Enviado. ¡Gracias!</div>
+                    <button type="submit" class="btn btn-primary px-4 py-2">
+                      Enviar
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+            <div class="col-lg-6">
+              <div class="info-item d-flex p-4 rounded mb-3 spotlight-card">
+                <i
+                  class="bi bi-geo-alt flex-shrink-0 text-primary fs-4 me-3"
+                ></i>
+                <div>
+                  <h3 class="text-white fs-5">Ubicación</h3>
+                  <p class="mb-0 text-white-small">
+                    San José del Cabo, BCS, México
+                  </p>
+                </div>
+              </div>
+              <div class="info-item d-flex p-4 rounded mb-3 spotlight-card">
+                <i
+                  class="bi bi-envelope flex-shrink-0 text-primary fs-4 me-3"
+                ></i>
+                <div>
+                  <h3 class="text-white fs-5">Email</h3>
+                  <p class="mb-0 text-white-small">contacto@powerlink2.com</p>
+                </div>
+              </div>
+              <div
+                class="map-container rounded overflow-hidden mt-3 spotlight-card"
+                style="padding: 0"
+              >
+                <iframe
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d58889.03087457769!2d-109.7224166168781!3d23.06227472750209!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x86af509be8a22321%3A0x6093736766ad6e70!2sSan%20Jos%C3%A9%20del%20Cabo%2C%20B.C.S.!5e0!3m2!1ses!2smx!4v1700000000000!5m2!1ses!2smx"
+                  width="100%"
+                  height="300"
+                  style="border: 0"
+                  allowfullscreen=""
+                  loading="lazy"
+                ></iframe>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer id="footer" class="footer position-relative py-4">
+      <div class="container text-center">
+        <h3 class="sitename mb-2 text-white">PowerLink2</h3>
+        <p class="text-white-small mb-4">Tu consumo, bajo control.</p>
+        <div class="social-links d-flex justify-content-center mb-4 gap-3">
+          <a
+            href="#"
+            class="rounded-circle bg-dark border border-secondary text-white p-2"
+            ><i class="bi bi-twitter-x"></i
+          ></a>
+          <a
+            href="#"
+            class="rounded-circle bg-dark border border-secondary text-white p-2"
+            ><i class="bi bi-facebook"></i
+          ></a>
+          <a
+            href="#"
+            class="rounded-circle bg-dark border border-secondary text-white p-2"
+            ><i class="bi bi-instagram"></i
+          ></a>
+        </div>
+        <div class="copyright small text-white-small">
+          <span>©</span> <strong class="px-1 text-white">PowerLink2</strong>
+          <span>Todos los derechos reservados</span>
+        </div>
+      </div>
+    </footer>
+
+    <a
+      href="#"
+      id="scroll-top"
+      class="scroll-top d-flex align-items-center justify-content-center bg-primary"
+      ><i class="bi bi-arrow-up-short"></i
+    ></a>
+    <div id="preloader"></div>
+
+    <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/vendor/php-email-form/validate.js"></script>
+    <script src="assets/vendor/aos/aos.js"></script>
+    <script src="assets/vendor/typed.js/typed.umd.js"></script>
+    <script src="assets/vendor/purecounter/purecounter_vanilla.js"></script>
+    <script src="assets/vendor/waypoints/noframework.waypoints.js"></script>
+    <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
+    <script src="assets/vendor/imagesloaded/imagesloaded.pkgd.min.js"></script>
+    <script src="assets/vendor/isotope-layout/isotope.pkgd.min.js"></script>
+    <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
+
+    <script src="assets/js/main.js"></script>
+
+    <script>
+  // 1. OPTIMIZACIÓN DEL EFECTO SPOTLIGHT
+  const cards = document.querySelectorAll(".spotlight-card, .pricing-item");
+
+  cards.forEach((card) => {
+    card.addEventListener("mousemove", (e) => {
+      requestAnimationFrame(() => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        card.style.setProperty("--mouse-x", `${x}px`);
+        card.style.setProperty("--mouse-y", `${y}px`);
+      });
+    });
+  });
+
+  // 2. PARTICLE NETWORK BACKGROUND (Modificado: Sin líneas al mouse, más repulsión)
+  const canvas = document.getElementById("canvas-container");
+  const ctx = canvas.getContext("2d");
+  let width, height;
+  let particles = [];
+
+  const particleCount = 200; // Cantidad de partículas (puedes bajarlo si sientes lag)
+  const connectionDistance = 100; // Distancia para conectar partículas entre sí
+  const mouseDistance = 150; // Aumenté un poco el radio de interacción del mouse
+
+  let mouse = { x: null, y: null };
+
+  window.addEventListener("mousemove", (e) => {
+    // Usamos clientX/Y que es más estándar para coordenadas de ventana
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+  });
+
+  window.addEventListener("resize", resize);
+
+  function resize() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  }
+
+  class Particle {
+    constructor() {
+      this.x = Math.random() * width;
+      this.y = Math.random() * height;
+      this.vx = (Math.random() - 0.5) * 0.5;
+      this.vy = (Math.random() - 0.5) * 0.5;
+      this.size = Math.random() * 2 + 1;
+    }
+
+    update() {
+      this.x += this.vx;
+      this.y += this.vy;
+
+      // Rebotar en bordes
+      if (this.x < 0 || this.x > width) this.vx *= -1;
+      if (this.y < 0 || this.y > height) this.vy *= -1;
+
+      // --- LÓGICA DE REPULSIÓN DEL MOUSE ---
+      if (mouse.x != null) {
+        let dx = mouse.x - this.x;
+        let dy = mouse.y - this.y;
+        let distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < mouseDistance) {
+          const forceDirectionX = dx / distance;
+          const forceDirectionY = dy / distance;
+          
+          // Cuánto más cerca, más fuerte el empuje
+          const force = (mouseDistance - distance) / mouseDistance;
+          
+          // AQUÍ ESTÁ EL CAMBIO: Multiplicador de fuerza aumentado a 3 (antes 0.5)
+          // El signo negativo (-) es lo que hace que las "empuje" lejos.
+          const directionX = forceDirectionX * force * 2; 
+          const directionY = forceDirectionY * force * 2;
+
+          this.x -= directionX;
+          this.y -= directionY;
+        }
+      }
+    }
+
+    draw() {
+      ctx.fillStyle = "rgba(59, 130, 246, 0.8)";
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function initParticles() {
+    particles = [];
+    for (let i = 0; i < particleCount; i++) {
+      particles.push(new Particle());
+    }
+  }
+
+  function animateParticles() {
+    ctx.clearRect(0, 0, width, height);
+
+    for (let i = 0; i < particles.length; i++) {
+      particles[i].update();
+      particles[i].draw();
+
+      // Dibujar conexiones ENTRE PARTÍCULAS (esto se mantiene)
+      for (let j = i; j < particles.length; j++) {
+        let dx = particles[i].x - particles[j].x;
+        let dy = particles[i].y - particles[j].y;
+        let distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < connectionDistance) {
+          ctx.beginPath();
+          let opacity = 1 - distance / connectionDistance;
+          ctx.strokeStyle = "rgba(59, 130, 246, " + opacity * 0.2 + ")";
+          ctx.lineWidth = 1;
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.stroke();
+        }
+      }
+      
+      // NOTA: He eliminado la parte que dibujaba la línea hacia el mouse.
+      // Ahora solo calcula la física (en update) pero no dibuja la línea.
+    }
+    requestAnimationFrame(animateParticles);
+  }
+
+  resize();
+  initParticles();
+  animateParticles();
+</script>
+  </body>
+</html>

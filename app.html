@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>PowerLink2 - App</title>
+
+    <link href="assets/img/favicon.png" rel="icon">
+    <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/vendor/aos/aos.css" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <link href="assets/css/main.css" rel="stylesheet">
+
+    <style>
+        /* Controles Superiores Flotantes (Notificaciones) */
+        .top-controls {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            z-index: 9999;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        /* Botón de Notificaciones Flotante */
+        .btn-floating-notify {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--surface-color);
+            color: var(--heading-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.3s;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .btn-floating-notify:hover {
+            background-color: var(--accent-color);
+            color: #fff;
+        }
+
+        /* AJUSTE PARA MOVER EL BOTÓN DEL MENÚ MÓVIL A LA IZQUIERDA (Uniformidad) */
+        .header .header-toggle {
+            right: auto !important; /* Anula la posición derecha por defecto de la plantilla */
+            left: 15px !important; /* Posiciona el botón en la izquierda */
+            position: fixed; /* Mantiene el botón fijo al hacer scroll */
+        }
+
+        /* Offcanvas (Panel Lateral Notificaciones) Estilo Dark */
+        .offcanvas {
+            background-color: var(--background-color) !important;
+            color: var(--default-color);
+        }
+        .offcanvas-header .btn-close {
+            filter: invert(1); /* Hace la X blanca */
+        }
+    </style>
+</head>
+
+<body class="index-page">
+    
+    <div id="app-shell" class="d-none">
+        <div class="top-controls">
+            <button class="btn btn-floating-notify position-relative" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNotifications">
+                <i class="bi bi-bell"></i>
+                <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle d-none" id="notification-badge">
+                    <span class="visually-hidden">Nuevas alertas</span>
+                </span>
+            </button>
+            </div>
+
+        <header id="header" class="header d-flex flex-column justify-content-center">
+            <i class="header-toggle d-xl-none bi bi-list" id="mobile-nav-toggle"></i>
+
+            <nav id="navmenu" class="navmenu">
+                <ul>
+                    <li><a href="#dashboard" class="active"><i class="bi bi-speedometer2 navicon"></i><span>Dashboard</span></a></li>
+                    <li><a href="#devices"><i class="bi bi-cpu navicon"></i><span>Dispositivos</span></a></li>
+                    <li><a href="#settings"><i class="bi bi-gear navicon"></i><span>Configuración</span></a></li>
+                    <li style="margin-top: 25px;">
+                        <a href="#" id="logout-button" style="background-color: var(--yellow-accent); color: var(--background-color); justify-content: center;">
+                            <i class="bi bi-box-arrow-left navicon" style="color: var(--background-color);"></i>
+                            <span>Cerrar Sesión</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </header>
+
+        <main class="main" id="app-content"></main>
+    </div>
+
+    <div id="auth-view" class="d-none">
+    <section class="position-relative vh-100 d-flex align-items-center justify-content-center" 
+             style="background: linear-gradient(135deg, #0f1215 0%, #1a2026 100%);">
+        
+        <div class="position-absolute top-0 start-0 w-100 h-100" 
+             style="opacity: 0.1; background-image: radial-gradient(#0563bb 1px, transparent 1px); background-size: 30px 30px;"></div>
+
+        <div class="container position-relative" style="z-index: 2;">
+            <div class="row justify-content-center">
+                <div class="col-lg-5 col-md-8">
+                    
+                    <div class="card border-0 shadow-lg animate__animated animate__fadeInUp" 
+                         style="background-color: rgba(33, 37, 41, 0.85); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);">
+                        
+                        <div class="card-body p-5">
+                            
+                            <div class="text-center mb-4">
+                                <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" 
+                                     style="width: 60px; height: 60px; background: rgba(5,99,187,0.2); color: #0563bb;">
+                                    <i class="bi bi-lightning-charge-fill fs-2"></i>
+                                </div>
+                                <h3 class="fw-bold text-white">Bienvenido</h3>
+                                <p class="text-white-50 small">Gestiona tu energía inteligentemente.</p>
+                            </div>
+
+                            <ul class="nav nav-pills nav-fill mb-4 p-1 rounded bg-black bg-opacity-25" id="pills-tab" role="tablist" style="border: 1px solid rgba(255,255,255,0.1);">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active rounded py-2 text-white" id="pills-login-tab" data-bs-toggle="pill" data-bs-target="#pills-login" type="button">Iniciar Sesión</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link rounded py-2 text-white" id="pills-register-tab" data-bs-toggle="pill" data-bs-target="#pills-register" type="button">Crear Cuenta</button>
+                                </li>
+                            </ul>
+
+                            <div class="tab-content" id="pills-tabContent">
+
+                                <div class="tab-pane fade show active" id="pills-login" role="tabpanel">
+                                    <form id="login-form">
+                                        <div class="form-floating mb-3">
+                                            <input type="email" class="form-control bg-dark text-white border-secondary" id="login-email" placeholder="Email" required>
+                                            <label for="login-email" class="text-white-50">Correo Electrónico</label>
+                                        </div>
+                                        <div class="form-floating mb-3 position-relative">
+                                            <input type="password" class="form-control bg-dark text-white border-secondary" id="login-password" placeholder="Contraseña" required>
+                                            <label for="login-password" class="text-white-50">Contraseña</label>
+                                            <i class="bi bi-eye-slash position-absolute top-50 end-0 translate-middle-y me-3 text-white-50 toggle-password" style="cursor: pointer; z-index: 5;" data-target="login-password"></i>
+                                        </div>
+                                        
+                                        <div class="d-flex justify-content-between align-items-center mb-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input bg-dark border-secondary" type="checkbox" id="remember-me" checked>
+                                                <label class="form-check-label text-white-50 small" for="remember-me">Recordarme</label>
+                                            </div>
+                                            <a href="#" class="small text-primary text-decoration-none" data-bs-toggle="modal" data-bs-target="#forgotPasswordModal">¿Olvidaste tu contraseña?</a>
+                                        </div>
+
+                                        <div class="d-grid">
+                                            <button type="submit" class="btn btn-primary btn-lg fw-bold" style="background-color: var(--accent-color); border: none;">
+                                                Ingresar
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+
+                                <div class="tab-pane fade" id="pills-register" role="tabpanel">
+                                    <form id="register-form">
+                                        <div class="form-floating mb-3">
+                                            <input type="email" class="form-control bg-dark text-white border-secondary" id="register-email" placeholder="Email" required>
+                                            <label for="register-email" class="text-white-50">Correo Electrónico</label>
+                                        </div>
+                                        <div class="form-floating mb-3">
+                                            <input type="password" class="form-control bg-dark text-white border-secondary" id="register-password" placeholder="Contraseña" required minlength="6">
+                                            <label for="register-password" class="text-white-50">Contraseña</label>
+                                        </div>
+                                        <div class="form-floating mb-3">
+                                            <input type="password" class="form-control bg-dark text-white border-secondary" id="register-password-confirm" placeholder="Confirmar" required>
+                                            <label for="register-password-confirm" class="text-white-50">Confirmar Contraseña</label>
+                                        </div>
+                                        <div class="d-grid">
+                                            <button type="submit" class="btn btn-primary btn-lg fw-bold" style="background-color: var(--accent-color); border: none;">
+                                                Registrarse
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+
+                            </div>
+                        </div>
+                        
+                        <div class="card-footer text-center py-3 border-top border-secondary bg-transparent">
+                            
+                            <a href="index.html" class="btn btn-sm btn-outline-secondary border-0 text-white-50 mb-2" style="transition: all 0.3s;">
+                                <i class="bi bi-arrow-left me-2"></i>Volver al Sitio Web
+                            </a>
+
+                            <div class="d-block">
+                                <small class="text-white-50">PowerLink2 &copy; 2025</small>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<div class="modal fade" id="forgotPasswordModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background-color: #212529; color: white; border: 1px solid rgba(255,255,255,0.1);">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">Recuperar Acceso</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-white-50 mb-4">Ingresa tu correo para recibir un enlace de restablecimiento.</p>
+                <form id="forgot-password-form">
+                    <div class="form-floating mb-3">
+                        <input type="email" class="form-control bg-dark text-white border-secondary" id="recovery-email" placeholder="Email" required>
+                        <label for="recovery-email" class="text-white-50">Tu Correo</label>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Enviar Enlace</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="resetPasswordModal" data-bs-backdrop="static" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background-color: #212529; color: white; border: 1px solid var(--accent-color);">
+            <div class="modal-body p-5 text-center">
+                <i class="bi bi-shield-check fs-1 text-success mb-3"></i>
+                <h4>Nueva Contraseña</h4>
+                <p class="text-white-50 mb-4">Ingresa tu nueva clave para recuperar el acceso.</p>
+                <form id="new-password-form">
+                    <div class="form-floating mb-3">
+                        <input type="password" class="form-control bg-dark text-white border-secondary" id="new-password-final" placeholder="Nueva" required minlength="6">
+                        <label for="new-password-final" class="text-white-50">Nueva Contraseña</label>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-success">Actualizar y Entrar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+    <div id="preloader"></div>
+
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasNotifications" aria-labelledby="offcanvasNotificationsLabel">
+        <div class="offcanvas-header" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <h5 class="offcanvas-title" id="offcanvasNotificationsLabel" style="color: var(--heading-color);">Notificaciones</h5>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div id="notification-list" class="list-group list-group-flush">
+                </div>
+        </div>
+    </div>
+
+    <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    
+    <script type="module" src="assets/js/app.js"></script>
+
+</body>
+</html>
