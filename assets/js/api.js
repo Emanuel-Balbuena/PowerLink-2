@@ -100,7 +100,7 @@ export const api = {
                 // Si es vista diaria (por horas), SÍ queremos la hora local del usuario
                 if (range === 'daily') {
                     const d = new Date(item.timestamp_bucket);
-                    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
                 } 
                 
                 // Si es semanal/mensual (por días), el servidor manda T00:00:00 UTC.
@@ -112,14 +112,42 @@ export const api = {
                 const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
                 
                 // ParseInt para quitar ceros a la izquierda si quieres (ej: "09" -> "9") 
-                // y month-1 porque el array empieza en 0.
-                return `${day} ${meses[parseInt(month) - 1]}`;
+                // ParseInt para quitar ceros a la izquierda (ej: "09" -> "9") y asegurar MATCH con UI
+                return `${parseInt(day, 10)} ${meses[parseInt(month, 10) - 1]}`;
             });
 
             const values = rawData.map(item => item.kwh_consumed);
 
             console.log("📊 API: Datos transformados para gráfica:", { labels, values });
 
+            return { labels, values };
+        },
+        
+        // --- FUNCIÓN AÑADIDA PARA COMPARADOR EXACTO ---
+        getAnalyticsExact: async (deviceId, range, startDateStr, endDateStr) => {
+            const params = new URLSearchParams({
+                id: deviceId,
+                start: new Date(startDateStr).toISOString(),
+                end: new Date(endDateStr).toISOString()
+            });
+
+            console.log("📡 API Exacta: Pidiendo datos raw...", params.toString());
+
+            const rawData = await invokeFunction(`get-analytics-device?${params.toString()}`, { method: 'GET' });
+
+            if (!rawData || !Array.isArray(rawData)) return { labels: [], values: [] };
+
+            const labels = rawData.map(item => {
+                if (range === 'daily') {
+                    const d = new Date(item.timestamp_bucket);
+                    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+                } 
+                const [year, month, day] = item.timestamp_bucket.split('T')[0].split('-');
+                const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+                return `${parseInt(day, 10)} ${meses[parseInt(month, 10) - 1]}`;
+            });
+
+            const values = rawData.map(item => item.kwh_consumed);
             return { labels, values };
         },
         // ------------------------------------------------

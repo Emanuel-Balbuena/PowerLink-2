@@ -190,7 +190,46 @@ export async function renderDeviceDetail(container, deviceId) {
 }
 
 function getCompareModalHTML() {
-  return `<div class="modal fade" id="compareModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content" style="background-color: var(--surface-color); color: white;"><div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.1);"><h5 class="modal-title">Comparar Periodos</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><form id="compare-form"><div class="mb-3"><label class="form-label">Comparar con:</label><select class="form-select bg-dark text-light" style="border: 1px solid rgba(255,255,255,0.2);" id="compare-range-select"><option value="prev_day">Día Anterior</option><option value="prev_week">Semana Pasada</option></select></div><div class="d-grid"><button type="submit" class="btn btn-info">Generar Gráfica</button></div></form></div></div></div></div>`;
+  return `
+    <div class="modal fade" id="compareModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background-color: var(--surface-color); color: white;">
+          <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <h5 class="modal-title"><i class="bi bi-bar-chart-steps text-info"></i> Comparación Dinámica</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <form id="compare-form">
+              
+              <div class="mb-3">
+                <label class="form-label small text-light">Modo de Comparación:</label>
+                <select class="form-select bg-dark text-light" style="border: 1px solid rgba(255,255,255,0.2);" id="compare-type-select">
+                  <option value="daily">Días (Día vs Día)</option>
+                  <option value="weekly">Semanas (Semana vs Semana)</option>
+                  <option value="monthly">Meses (Mes vs Mes)</option>
+                </select>
+              </div>
+
+              <div class="row mb-3">
+                <div class="col-6">
+                  <label class="form-label small text-info"><i class="bi bi-calendar-event"></i> Periodo A:</label>
+                  <input type="date" id="compare-date-a" class="form-control bg-dark text-light" style="border: 1px solid rgba(255,255,255,0.2);" required>
+                </div>
+                <div class="col-6">
+                  <label class="form-label small text-warning"><i class="bi bi-calendar-event"></i> Periodo B:</label>
+                  <input type="date" id="compare-date-b" class="form-control bg-dark text-light" style="border: 1px solid rgba(255,255,255,0.2);" required>
+                </div>
+              </div>
+
+              <div class="d-grid mt-4">
+                <button type="submit" class="btn btn-info">Generar Gráfica</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 // --- LOGICA ---
@@ -346,54 +385,63 @@ async function loadChartData(deviceId, range, date) {
     weekly: "Consumo Diario",
     monthly: "Consumo Diario",
   };
+  
+  let dateTitle = date;
+  if (range === 'weekly') dateTitle = utils.formatHumanWeek(date);
+
   document.getElementById(
     "chart-title"
-  ).innerText = `${rangeLabels[range]} (${date})`;
+  ).innerText = `${rangeLabels[range]} (${dateTitle})`;
 
   try {
-    let queryDate = date;
-    if (date !== "today" && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      queryDate = `${date}T00:00:00`;
+    let queryStart = "";
+    let queryEnd = "";
+    let safeDate = date;
+
+    if (safeDate === "today") {
+       const now = new Date();
+       const year = now.getFullYear();
+       const month = String(now.getMonth() + 1).padStart(2, "0");
+       const day = String(now.getDate()).padStart(2, "0");
+       safeDate = `${year}-${month}-${day}`;
     }
 
-    const data = await api.devices.getAnalytics(deviceId, range, queryDate);
+    if (range === "daily") {
+      queryStart = `${safeDate}T00:00:00`;
+      queryEnd   = `${safeDate}T23:59:59`;
+    } else if (range === "weekly") {
+      const monday = utils.weekToDateString(safeDate);
+      const endObj = new Date(monday); 
+      endObj.setDate(endObj.getDate() + 6);
+      const sunday = `${endObj.getFullYear()}-${String(endObj.getMonth()+1).padStart(2,'0')}-${String(endObj.getDate()).padStart(2,'0')}`;
+      queryStart = `${monday}T00:00:00`;
+      queryEnd   = `${sunday}T23:59:59`;
+    } else if (range === "monthly") {
+      const [y, m] = safeDate.split("-");
+      const lastDay = new Date(y, m, 0).getDate();
+      queryStart = `${safeDate}-01T00:00:00`;
+      queryEnd   = `${safeDate}-${lastDay}T23:59:59`;
+    }
+
+    const data = await api.devices.getAnalyticsExact(deviceId, range, queryStart, queryEnd);
     spinner.classList.add("d-none");
     canvas.style.opacity = "1";
 
     if (!data || !data.labels) throw new Error("Sin datos");
 
-    const monthNames = [
-      "ene",
-      "feb",
-      "mar",
-      "abr",
-      "may",
-      "jun",
-      "jul",
-      "ago",
-      "sep",
-      "oct",
-      "nov",
-      "dic",
-    ];
-
-    const cleanLabels = data.labels.map((label) => {
-      if (range === "daily" && label.includes("T")) {
-        const d = new Date(label);
-        return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      }
-      if (label.includes("T")) {
-        // FIX MANUAL: Cortar texto para evitar UTC shift
-        const datePart = label.split("T")[0];
-        const parts = datePart.split("-");
-        const dayNum = parseInt(parts[2], 10);
-        const monthIndex = parseInt(parts[1], 10) - 1;
-        return `${dayNum} ${monthNames[monthIndex]}`;
-      }
-      return label;
-    });
-
-    renderChart(cleanLabels, data.values);
+    if (range === "daily") {
+       const standardLabels = generate24HourLabels();
+       const valuesNormalized = alignDataTo24Hours(data.labels, data.values);
+       renderChart(standardLabels, valuesNormalized);
+    } else if (range === "weekly") {
+       const standardLabels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+       const valuesNormalized = alignDataToWeekly(data.labels, data.values, queryStart);
+       renderChart(standardLabels, valuesNormalized);
+    } else {
+       // Mensual original mapping o simple
+       const { labels: stdLabels, values: vals } = alignDataToMonthly(data.labels, data.values, queryStart);
+       renderChart(stdLabels, vals);
+    }
 
     const totalKwh = data.values.reduce((a, b) => a + b, 0);
     const totalCost = totalKwh * (userCostSettings.costo_kwh || 0);
@@ -417,69 +465,94 @@ async function loadChartData(deviceId, range, date) {
 }
 
 // === FUNCIÓN AÑADIDA: COMPARACIÓN ===
-async function loadComparisonData(deviceId, compareMode) {
+async function loadComparisonData(mode, dateAStr, dateBStr) {
   const spinner = document.getElementById("chart-loading");
+  const deviceId = window.location.hash.split("/")[1];
   spinner.classList.remove("d-none");
 
-  const activeBtn = document.querySelector(".range-btn.active");
-  const rangeA = activeBtn?.dataset.range || "daily";
-  const datePickerVal = document.getElementById("date-picker").value;
-  const labelA = "Actual";
+  // El Backend de Supabase espera periodos referenciados por su fecha de inicio a las T00:00:00.
+  // Para MES: "2026-03" -> "2026-03-01T00:00:00"
+  // Para SEMANA: "2026-W11" -> Convertimos a la fecha del Lunes de esa semana.
+  // Para DÍA: "2026-03-12" -> "2026-03-12T00:00:00"
 
-  // Lógica para fecha B (Pasado)
-  let parts = datePickerVal.split("-");
-  let dateBObj = new Date(parts[0], parts[1] - 1, parts[2]);
-  let labelB = "Comparativa";
+  let queryStartA = "";  let queryEndA = "";
+  let queryStartB = "";  let queryEndB = "";
+  let labelA = "";       let labelB = "";
 
-  if (compareMode === "prev_day") {
-    dateBObj.setDate(dateBObj.getDate() - 1);
-    labelB = "Día Anterior";
-  } else if (compareMode === "prev_week") {
-    dateBObj.setDate(dateBObj.getDate() - 7);
-    labelB = "Semana Pasada";
+  if (mode === "daily") {
+    queryStartA = `${dateAStr}T00:00:00`;
+    queryEndA   = `${dateAStr}T23:59:59`;
+    queryStartB = `${dateBStr}T00:00:00`;
+    queryEndB   = `${dateBStr}T23:59:59`;
+    labelA = dateAStr;
+    labelB = dateBStr;
+  } else if (mode === "weekly") {
+    const mondayA = utils.weekToDateString(dateAStr);
+    const mondayB = utils.weekToDateString(dateBStr);
+    
+    // Calculamos el Domingo (Lunes + 6 días)
+    const endAObj = new Date(mondayA); endAObj.setDate(endAObj.getDate() + 6);
+    const endBObj = new Date(mondayB); endBObj.setDate(endBObj.getDate() + 6);
+    
+    const sundayA = `${endAObj.getFullYear()}-${String(endAObj.getMonth()+1).padStart(2,'0')}-${String(endAObj.getDate()).padStart(2,'0')}`;
+    const sundayB = `${endBObj.getFullYear()}-${String(endBObj.getMonth()+1).padStart(2,'0')}-${String(endBObj.getDate()).padStart(2,'0')}`;
+
+    queryStartA = `${mondayA}T00:00:00`;
+    queryEndA   = `${sundayA}T23:59:59`;
+    queryStartB = `${mondayB}T00:00:00`;
+    queryEndB   = `${sundayB}T23:59:59`;
+    labelA = `Semana: ${utils.formatHumanWeek(dateAStr)}`;
+    labelB = `Semana: ${utils.formatHumanWeek(dateBStr)}`;
+  } else if (mode === "monthly") {
+    const [yA, mA] = dateAStr.split("-");
+    const [yB, mB] = dateBStr.split("-");
+    const lastDayA = new Date(yA, mA, 0).getDate(); // Día 0 del mes siguiente = Último día de este mes
+    const lastDayB = new Date(yB, mB, 0).getDate();
+
+    queryStartA = `${dateAStr}-01T00:00:00`;
+    queryEndA   = `${dateAStr}-${lastDayA}T23:59:59`;
+    queryStartB = `${dateBStr}-01T00:00:00`;
+    queryEndB   = `${dateBStr}-${lastDayB}T23:59:59`;
+    labelA = `Mes: ${dateAStr}`;
+    labelB = `Mes: ${dateBStr}`;
   }
 
-  const yearB = dateBObj.getFullYear();
-  const monthB = String(dateBObj.getMonth() + 1).padStart(2, "0");
-  const dayB = String(dateBObj.getDate()).padStart(2, "0");
-  const dateBStr = `${yearB}-${monthB}-${dayB}`;
-
-  const queryDateA = `${datePickerVal}T00:00:00`;
-  const queryDateB = `${dateBStr}T00:00:00`;
-
-  document.getElementById(
-    "chart-title"
-  ).innerText = `Comparativa: ${datePickerVal} vs ${dateBStr}`;
+  document.getElementById("chart-title").innerText = `Comparativa: ${labelA} vs ${labelB}`;
 
   try {
     const [dataA, dataB] = await Promise.all([
-      api.devices.getAnalytics(deviceId, rangeA, queryDateA),
-      api.devices.getAnalytics(deviceId, rangeA, queryDateB),
+      api.devices.getAnalyticsExact(deviceId, mode, queryStartA, queryEndA),
+      api.devices.getAnalyticsExact(deviceId, mode, queryStartB, queryEndB),
     ]);
 
     spinner.classList.add("d-none");
 
     // --- AQUÍ ESTÁ LA MAGIA ---
-    // Si estamos viendo "Día", forzamos el eje X a ser 00:00 - 23:00
-    if (rangeA === "daily") {
-      // 1. Generamos etiquetas fijas (00:00 ... 23:00)
+    // Superponemos las series. Cada línea de Chart.js correrá a una misma velocidad dictada
+    // por un eje X común genérico (00 hrs, Semanal, etc.)
+    if (mode === "daily") {
       const standardLabels = generate24HourLabels();
-
-      // 2. Alineamos los datos a esas 24 cubetas (rellenando con 0 lo que falte)
       const valuesANormalized = alignDataTo24Hours(dataA.labels, dataA.values);
       const valuesBNormalized = alignDataTo24Hours(dataB.labels, dataB.values);
+      renderChart(standardLabels, valuesANormalized, valuesBNormalized, labelA, labelB);
+    } else if (mode === "weekly") {
+      const standardLabels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+      const valuesANormalized = alignDataToWeekly(dataA.labels, dataA.values, queryStartA);
+      const valuesBNormalized = alignDataToWeekly(dataB.labels, dataB.values, queryStartB);
+      renderChart(standardLabels, valuesANormalized, valuesBNormalized, labelA, labelB);
+    } else if (mode === "monthly") {
+      const resultA = alignDataToMonthly(dataA.labels, dataA.values, queryStartA);
+      const resultB = alignDataToMonthly(dataB.labels, dataB.values, queryStartB);
+      
+      const maxDays = Math.max(resultA.labels.length, resultB.labels.length);
+      const standardLabels = Array.from({length: maxDays}, (_, i) => `${i+1}`);
+      const valuesANormalized = new Array(maxDays).fill(0);
+      const valuesBNormalized = new Array(maxDays).fill(0);
 
-      renderChart(
-        standardLabels,
-        valuesANormalized,
-        valuesBNormalized,
-        labelA,
-        labelB
-      );
-    } else {
-      // Si es Semanal o Mensual, usamos la lógica anterior (menos crítica)
-      // Nota: Idealmente también deberías normalizar días, pero para este fix nos centramos en horas.
-      renderChart(dataA.labels, dataA.values, dataB.values, labelA, labelB);
+      resultA.values.forEach((v, i) => valuesANormalized[i] = v);
+      resultB.values.forEach((v, i) => valuesBNormalized[i] = v);
+
+      renderChart(standardLabels, valuesANormalized, valuesBNormalized, labelA, labelB);
     }
   } catch (e) {
     console.error(e);
@@ -533,6 +606,23 @@ function renderChart(
   currentChart = new Chart(ctx, {
     type: "bar",
     data: { labels: labels, datasets: datasets },
+    plugins: [{
+      id: 'noData',
+      afterDraw: (chart) => {
+        // Checar si todos los valores de todas las lineas son estrictamente 0
+        const isDataEmpty = chart.data.datasets.every((ds) => ds.data.every((val) => val === 0));
+        if (isDataEmpty) {
+          const { ctx, width, height } = chart;
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = "normal 14px 'Inter', sans-serif";
+          ctx.fillStyle = "rgba(255,255,255,0.6)";
+          ctx.fillText('Sin información registrada para este rango de fechas.', width / 2, height / 2);
+          ctx.restore();
+        }
+      }
+    }],
     options: {
       responsive: true,
       maintainAspectRatio: false,
@@ -616,20 +706,74 @@ function setupListeners(deviceId) {
         .forEach((b) => b.classList.remove("active"));
       e.target.classList.add("active");
       const range = e.target.dataset.range;
+      
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, "0");
+
+      if (range === 'daily') {
+          datePicker.type = 'date';
+          datePicker.value = `${year}-${month}-${day}`;
+      } else if (range === 'weekly') {
+          datePicker.type = 'week';
+          datePicker.value = utils.getCurrentWeekString();
+      } else if (range === 'monthly') {
+          datePicker.type = 'month';
+          datePicker.value = `${year}-${month}`;
+      }
+
       const date = datePicker.value;
-      loadChartData(deviceId, range, date);
+      if (date) {
+        loadChartData(deviceId, range, date);
+      } else {
+        // Si el valor está vacío (ej. al poner weekly), forzamos interfaz limpia
+        const canvas = document.getElementById("device-chart");
+        if (currentChart) currentChart.destroy();
+        document.getElementById("chart-title").innerText = "Selecciona de calendario...";
+        document.getElementById("lbl-period-kwh").innerText = "--";
+        document.getElementById("lbl-period-cost").innerText = "--";
+      }
     });
   });
   document
     .getElementById("btn-open-compare")
-    .addEventListener("click", () =>
-      new bootstrap.Modal(document.getElementById("compareModal")).show()
-    );
+    .addEventListener("click", () => {
+      // Forzar que el modal limpie su form
+      document.getElementById("compare-form").reset();
+      document.getElementById("compare-date-a").type = 'date';
+      document.getElementById("compare-date-b").type = 'date';
+      new bootstrap.Modal(document.getElementById("compareModal")).show();
+    });
+
+  // Listener para cambiar el TIPO de Input dinámicamente
+  document.getElementById("compare-type-select").addEventListener("change", (e) => {
+    const mode = e.target.value;
+    const inputA = document.getElementById("compare-date-a");
+    const inputB = document.getElementById("compare-date-b");
+    
+    // Limpiamos los inputs al cambiar de modo para evitar fechas invalidas arrastradas
+    inputA.value = '';
+    inputB.value = '';
+
+    if (mode === "daily") {
+      inputA.type = "date"; inputB.type = "date";
+    } else if (mode === "weekly") {
+      inputA.type = "week"; inputB.type = "week";
+    } else if (mode === "monthly") {
+      inputA.type = "month"; inputB.type = "month";
+    }
+  });
+
+  // Evento Submit de la modal
   document.getElementById("compare-form").addEventListener("submit", (e) => {
     e.preventDefault();
-    const mode = document.getElementById("compare-range-select").value;
+    const mode = document.getElementById("compare-type-select").value;
+    const dateA = document.getElementById("compare-date-a").value;
+    const dateB = document.getElementById("compare-date-b").value;
+    
     bootstrap.Modal.getInstance(document.getElementById("compareModal")).hide();
-    loadComparisonData(deviceId, mode);
+    loadComparisonData(mode, dateA, dateB);
   });
   document
     .getElementById("community-form")
@@ -702,30 +846,72 @@ function generate24HourLabels() {
 }
 
 function alignDataTo24Hours(apiLabels, apiValues) {
-  // Crea un array de 24 ceros [0, 0, 0, ... 0]
   const filledValues = new Array(24).fill(0);
 
   apiLabels.forEach((label, index) => {
-    // La API manda ISO strings: "2025-11-12T16:00:00..."
-    // Intentamos sacar la hora.
-    let hour = -1;
-
-    if (label.includes("T")) {
-      // Extraemos la hora después de la T
-      const timePart = label.split("T")[1]; // "16:00:00..."
-      hour = parseInt(timePart.split(":")[0], 10);
-    } else {
-      // Fallback si la etiqueta ya viniera formateada (ej: "16:00")
-      hour = parseInt(label.split(":")[0], 10);
-    }
-
-    // Si la hora es válida (0-23), colocamos el valor en su posición correcta
-    if (hour >= 0 && hour <= 23) {
+    // La API ahora manda formato estricto "00:00", "23:00" etc, omitiendo a.m. o p.m.
+    const timePart = label.includes("T") ? label.split("T")[1] : label;
+    const hour = parseInt(timePart.split(":")[0], 10);
+    
+    if (!isNaN(hour) && hour >= 0 && hour <= 23) {
       filledValues[hour] = apiValues[index];
     }
   });
 
   return filledValues;
+}
+
+function alignDataToWeekly(labels, values, weekStartStr) {
+  // 0: Lun, 1: Mar, 2: Mié, 3: Jue, 4: Vie, 5: Sáb, 6: Dom
+  const normalized = new Array(7).fill(0);
+  
+  // Extraemos YYYY-MM-DD descartando la T00:00:00 y creamos Date Local absoluto
+  const datePart = weekStartStr.split("T")[0];
+  const [yy, mm, dd] = datePart.split("-");
+  const startObj = new Date(parseInt(yy), parseInt(mm) - 1, parseInt(dd));
+
+  const allowedLabels = [];
+  const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+  // 1. Generar los 7 textos esperados para emparejar (Ej. "9 mar", "10 mar")
+  for(let i=0; i<7; i++) {
+     const d = new Date(startObj);
+     d.setDate(d.getDate() + i);
+     const monthStr = meses[d.getMonth()];
+     // Importante: parseamos a int para remover ceros (09 -> 9) como lo hace api.js
+     const dayNum = parseInt(d.getDate(), 10);
+     allowedLabels.push(`${dayNum} ${monthStr}`);
+  }
+
+  // 2. Colocar cada valor en su respectiva cubeta pre-calculada de los 7 días
+  for (let i = 0; i < labels.length; i++) {
+     const idx = allowedLabels.indexOf(labels[i]);
+     if (idx !== -1) {
+        normalized[idx] = values[i];
+     }
+  }
+
+  return normalized;
+}
+
+function alignDataToMonthly(labels, values, monthStartStr) {
+  const datePart = monthStartStr.split("T")[0];
+  const [yy, mm] = datePart.split("-");
+  const maxDays = new Date(parseInt(yy, 10), parseInt(mm, 10), 0).getDate();
+
+  const stdLabels = Array.from({length: maxDays}, (_, i) => `${i+1}`);
+  const normalized = new Array(maxDays).fill(0);
+
+  for (let i = 0; i < labels.length; i++) {
+     const parts = labels[i].split(" ");
+     if (parts.length >= 2) {
+       const day = parseInt(parts[0], 10);
+       if (!isNaN(day) && day >= 1 && day <= maxDays) {
+          normalized[day - 1] = values[i];
+       }
+     }
+  }
+  return { labels: stdLabels, values: normalized };
 }
 
 function getDownloadModalHTML() {

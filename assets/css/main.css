@@ -69,6 +69,13 @@ body {
   font-family: var(--default-font);
 }
 
+/* Forzar modo oscuro en popups y datepickers nativos del navegador */
+input[type="date"],
+input[type="week"],
+input[type="month"] {
+  color-scheme: dark;
+}
+
 a {
   color: var(--accent-color);
   text-decoration: none;
