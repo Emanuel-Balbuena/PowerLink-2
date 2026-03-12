@@ -1,3 +1,4 @@
+// supabase/functions/run-community-aggregation/index.ts
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
@@ -37,14 +38,16 @@ serve(async (req) => {
   }
 
   try {
-    // 1. Obtener TODOS los dispositivos con huella y modelo
+    // 1. Obtener TODOS los dispositivos con huella y modelo que estén LOCKED y NO archivados
     const { data: devices, error: fetchError } = await supabase
       .from('dispositivos')
       .select('baseline_data, device_type, device_brand, device_model')
       .eq('monitoring_status', 'monitoring')
+      .eq('community_status', 'LOCKED') // NUEVO: Solo dispositivos confirmados
+      .eq('archivado', false)             // NUEVO: Ignorar hardware desvinculado
       .not('baseline_data', 'is', null)
-      .not('device_brand', 'is', null) // 
-      .not('device_model', 'is', null); // 
+      .not('device_brand', 'is', null) 
+      .not('device_model', 'is', null); 
 
     if (fetchError) throw fetchError;
 
@@ -54,7 +57,6 @@ serve(async (req) => {
     for (const device of devices) {
       const { baseline_data, device_type, device_brand, device_model } = device;
       
-      // Asegurarnos que la huella tiene los datos que necesitamos
       if (baseline_data?.standby_avg && baseline_data?.peak_avg) {
         const key = `${device_type}:${device_brand}:${device_model}`;
         
@@ -76,16 +78,16 @@ serve(async (req) => {
     for (const [key, stats] of aggregationMap.entries()) {
       const [device_type, device_brand, device_model] = key.split(':');
       
-      // Solo guardar si tenemos una muestra razonable (ej. > 1)
+      // Solo guardar si tenemos una muestra razonable (ej. > 10)
       if (stats.count >= 10) {
         upsertData.push({
           device_type: device_type,
           device_brand: device_brand,
           device_model: device_model,
-          avg_standby_kwh: stats.standbySum / stats.count, // 
-          avg_peak_kwh: stats.peakSum / stats.count, // 
-          sample_size: stats.count, // [cite: 77]
-          last_updated: now // [cite: 78]
+          avg_standby_kwh: stats.standbySum / stats.count,
+          avg_peak_kwh: stats.peakSum / stats.count,
+          sample_size: stats.count,
+          last_updated: now
         });
       }
     }
@@ -98,11 +100,10 @@ serve(async (req) => {
     }
 
     // 4. Hacer UPSERT en la tabla de comunidad
-    // Esto actualiza las filas existentes o inserta nuevas
     const { error: upsertError } = await supabase
       .from('community_baselines')
       .upsert(upsertData, {
-        onConflict: 'device_type, device_brand, device_model' // [cite: 80]
+        onConflict: 'device_type, device_brand, device_model' 
       });
 
     if (upsertError) throw upsertError;

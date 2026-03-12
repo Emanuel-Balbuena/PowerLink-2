@@ -1,17 +1,14 @@
 // supabase/functions/update-device/index.ts
-
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.4'
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
-Deno.serve(async (req: Request) => {
-  // Manejo de la solicitud OPTIONS (preflight) para CORS
-  // El método PATCH requiere manejo de preflight
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    // 1. Crear el cliente de Supabase y autenticar
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
@@ -23,7 +20,6 @@ Deno.serve(async (req: Request) => {
       throw userError || new Error('Usuario no autenticado.')
     }
 
-    // 2. Obtener los datos del body
     const body = await req.json()
     const { 
       id_dispositivo, 
@@ -31,59 +27,78 @@ Deno.serve(async (req: Request) => {
       id_grupo_fk, 
       device_type,
       device_brand,
-      device_model
+      device_model,
+      archive_hardware // NUEVO: Bandera desde el frontend
     } = body
 
     if (!id_dispositivo) {
       throw new Error('El campo "id_dispositivo" es requerido.')
     }
 
-    // 3. Construir el objeto de actualización dinámicamente
-    // Esto permite al usuario enviar solo los campos que quiere cambiar
-    const updateData: {
-      nombre_personalizado?: string,
-      id_grupo_fk?: string | null,
-      device_type?: string,
-      device_brand?: string,
-      device_model?: string
-    } = {}
-
-    if (nombre_personalizado) {
-      updateData.nombre_personalizado = nombre_personalizado
-    }
-    // Permite al usuario "quitar de un grupo" enviando null
-    if (id_grupo_fk !== undefined) { 
-      updateData.id_grupo_fk = id_grupo_fk
-    }
-    if (device_type) {
-      updateData.device_type = device_type
-    }
-    if (device_brand !== undefined) {
-      updateData.device_brand = device_brand
-    }
-    if (device_model !== undefined) {
-      updateData.device_model = device_model
-    }
-    
-    // 4. Ejecutar la actualización segura
-    // .eq('id_usuario_fk', user.id) previene que un usuario edite dispositivos de otro
-    const { data: updatedDevice, error: dbError } = await supabase
+    // PASO EXTRA: Obtener estado actual del dispositivo para validar las reglas de negocio
+    const { data: currentDevice, error: fetchError } = await supabase
       .from('dispositivos')
-      .update(updateData)
-      .eq('id_dispositivo', id_dispositivo) // El dispositivo específico
-      .eq('id_usuario_fk', user.id)      // Que además pertenezca al usuario
-      .select()                           // Devuélveme el dispositivo actualizado
-      .single()                           // Esperamos un solo resultado
+      .select('community_status, device_brand, device_model, id_hardware') // Ajusta id_hardware si tu campo MAC se llama distinto
+      .eq('id_dispositivo', id_dispositivo)
+      .eq('id_usuario_fk', user.id)
+      .single()
 
-    if (dbError) {
-      throw dbError
-    }
-
-    if (!updatedDevice) {
+    if (fetchError || !currentDevice) {
       throw new Error('Dispositivo no encontrado o no autorizado.')
     }
 
-    // 5. Devolver el dispositivo actualizado
+    const updateData: any = {}
+
+    // LÓGICA 1: Manejo de Archivado (Prioridad alta)
+    if (archive_hardware) {
+      updateData.archivado = true;
+      // Liberamos la MAC/Hardware ID real añadiendo un sufijo de tiempo para evitar colisiones UNIQUE.
+      // El ESP32 físico ahora está libre para ser registrado de nuevo.
+      if (currentDevice.id_hardware) {
+         updateData.id_hardware = `${currentDevice.id_hardware}_archived_${Date.now()}`;
+      }
+    }
+
+    // LÓGICA 2: Manejo de actualización estándar
+    if (nombre_personalizado) updateData.nombre_personalizado = nombre_personalizado;
+    if (id_grupo_fk !== undefined) updateData.id_grupo_fk = id_grupo_fk;
+    
+    // Validación estricta para campos de comunidad
+    const modifyingCommunityFields = device_type || device_brand !== undefined || device_model !== undefined;
+
+    if (modifyingCommunityFields) {
+      // Regla de Pinza: Rechazar si ya está LOCKED
+      if (currentDevice.community_status === 'LOCKED') {
+        return new Response(JSON.stringify({ error: 'No se puede modificar la marca o modelo de un dispositivo que ya está aportando a la comunidad (Estado LOCKED).' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        })
+      }
+
+      if (device_type) updateData.device_type = device_type;
+      if (device_brand !== undefined) updateData.device_brand = device_brand;
+      if (device_model !== undefined) updateData.device_model = device_model;
+
+      // Iniciar calibración si es la primera vez que se asigna marca/modelo
+      const isFirstTimeSetup = (!currentDevice.device_brand || !currentDevice.device_model) && (device_brand && device_model);
+      
+      if (isFirstTimeSetup) {
+        updateData.community_status = 'CALIBRATING';
+        updateData.community_joined_at = new Date().toISOString();
+      }
+    }
+    
+    // Ejecutar la actualización segura
+    const { data: updatedDevice, error: dbError } = await supabase
+      .from('dispositivos')
+      .update(updateData)
+      .eq('id_dispositivo', id_dispositivo) 
+      .eq('id_usuario_fk', user.id)      
+      .select()                           
+      .single()                           
+
+    if (dbError) throw dbError;
+
     return new Response(JSON.stringify(updatedDevice), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,

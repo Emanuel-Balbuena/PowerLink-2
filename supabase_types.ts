@@ -148,7 +148,10 @@ export type Database = {
       }
       dispositivos: {
         Row: {
+          archivado: boolean | null
           baseline_data: Json | null
+          community_joined_at: string | null
+          community_status: string | null
           device_brand: string | null
           device_meta: Json | null
           device_model: string | null
@@ -166,7 +169,10 @@ export type Database = {
           ultimo_heartbeat: string | null
         }
         Insert: {
+          archivado?: boolean | null
           baseline_data?: Json | null
+          community_joined_at?: string | null
+          community_status?: string | null
           device_brand?: string | null
           device_meta?: Json | null
           device_model?: string | null
@@ -184,7 +190,10 @@ export type Database = {
           ultimo_heartbeat?: string | null
         }
         Update: {
+          archivado?: boolean | null
           baseline_data?: Json | null
+          community_joined_at?: string | null
+          community_status?: string | null
           device_brand?: string | null
           device_meta?: Json | null
           device_model?: string | null
@@ -442,7 +451,10 @@ export type Database = {
           p_nombre_personalizado: string
         }
         Returns: {
+          archivado: boolean | null
           baseline_data: Json | null
+          community_joined_at: string | null
+          community_status: string | null
           device_brand: string | null
           device_meta: Json | null
           device_model: string | null

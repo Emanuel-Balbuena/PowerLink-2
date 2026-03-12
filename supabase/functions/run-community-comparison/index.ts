@@ -1,3 +1,4 @@
+// supabase/functions/run-community-comparison/index.ts
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
@@ -23,9 +24,6 @@ interface CommunityBaseline {
   sample_size: number;
 }
 
-/**
- * Lógica para evitar spam de alertas
- */
 async function checkAlertSpam(userId: string, tipo_alerta: string, deviceId: string): Promise<boolean> {
   const { data, error } = await supabase
     .from('alertas')
@@ -53,7 +51,6 @@ serve(async (req) => {
   }
 
   try {
-    // 1. Cargar TODAS las huellas de la comunidad en un Mapa para acceso rápido
     const { data: baselines, error: baselineError } = await supabase
       .from('community_baselines')
       .select('device_type, device_brand, device_model, avg_standby_kwh, avg_peak_kwh, sample_size');
@@ -66,30 +63,29 @@ serve(async (req) => {
       communityMap.set(key, baseline);
     }
 
-    // 2. Obtener TODOS los dispositivos de usuarios que participan (Opt-In)
+    // NUEVO: Añadidos los filtros para comunidad LOCKED y dispositivos no archivados
     const { data: devices, error: deviceError } = await supabase
       .from('dispositivos')
       .select('id_dispositivo, id_usuario_fk, nombre_personalizado, baseline_data, device_type, device_brand, device_model')
       .eq('monitoring_status', 'monitoring')
+      .eq('community_status', 'LOCKED') 
+      .eq('archivado', false)
       .not('baseline_data', 'is', null)
-      .not('device_model', 'is', null); // El 'Opt-In'
+      .not('device_model', 'is', null);
 
     if (deviceError) throw deviceError;
 
     let alertsCreated = 0;
     const errors: string[] = [];
-    const comparisonThreshold = 1.2; // 20%
+    const comparisonThreshold = 1.2; 
 
-    // 3. Iterar y comparar
     for (const device of devices) {
       const key = `${device.device_type}:${device.device_brand}:${device.device_model}`;
       
-      // Comprobar si existe una huella comunitaria para este modelo
       if (communityMap.has(key) && device.baseline_data?.standby_avg) {
         const communityData = communityMap.get(key)!;
         const deviceStandby = device.baseline_data.standby_avg;
         
-        // Comparamos el standby del dispositivo con el standby promedio de la comunidad [cite: 222, 223]
         if (deviceStandby > (communityData.avg_standby_kwh * comparisonThreshold)) {
           try {
             const tipoAlerta = 'RECOMENDACION_COMUNIDAD';
@@ -97,7 +93,7 @@ serve(async (req) => {
 
             if (!isSpam) {
               const diffPercent = Math.round((deviceStandby / communityData.avg_standby_kwh - 1) * 100);
-              const mensaje = `Tu '${device.nombre_personalizado}' consume un ${diffPercent}% más en standby que el promedio de la comunidad para este modelo.`; // [cite: 224]
+              const mensaje = `Tu '${device.nombre_personalizado}' consume un ${diffPercent}% más en standby que el promedio de la comunidad para este modelo.`;
 
               const { error: insertError } = await supabase.from('alertas').insert({
                 id_usuario_fk: device.id_usuario_fk,
