@@ -211,10 +211,17 @@ async function loadStaticInfo(deviceId) {
       renderLearningBanner(device.fecha_registro);
     else document.getElementById("learning-banner-container").innerHTML = "";
 
-    if (device.device_brand)
+    if (device.device_brand) {
       document.getElementById("input-brand").value = device.device_brand;
-    if (device.device_model)
+    }
+    if (device.device_model) {
       document.getElementById("input-model").value = device.device_model;
+    }
+    
+    // Nueva lógica: si ya tiene marca y modelo, mostramos la insignia "Guardado"
+    if (device.device_brand || device.device_model) {
+        document.getElementById("badge-community-ok").classList.remove("d-none");
+    }
   }
 }
 
@@ -539,10 +546,15 @@ function setupListeners(deviceId) {
       btn.disabled = true;
       btn.innerText = "Guardando...";
       try {
-        await api.devices.update(deviceId, {
+        const updatedDevice = await api.devices.update(deviceId, {
           device_brand: brand,
           device_model: model,
         });
+
+        // Actualizamos el dispositivo en el store global para que recuerde los datos
+        // y no haya necesidad de recargar la página.
+        store.updateDevice(updatedDevice);
+
         document
           .getElementById("badge-community-ok")
           .classList.remove("d-none");

@@ -29,7 +29,9 @@ Deno.serve(async (req: Request) => {
       id_dispositivo, 
       nombre_personalizado, 
       id_grupo_fk, 
-      device_type 
+      device_type,
+      device_brand,
+      device_model
     } = body
 
     if (!id_dispositivo) {
@@ -41,7 +43,9 @@ Deno.serve(async (req: Request) => {
     const updateData: {
       nombre_personalizado?: string,
       id_grupo_fk?: string | null,
-      device_type?: string
+      device_type?: string,
+      device_brand?: string,
+      device_model?: string
     } = {}
 
     if (nombre_personalizado) {
@@ -53,6 +57,12 @@ Deno.serve(async (req: Request) => {
     }
     if (device_type) {
       updateData.device_type = device_type
+    }
+    if (device_brand !== undefined) {
+      updateData.device_brand = device_brand
+    }
+    if (device_model !== undefined) {
+      updateData.device_model = device_model
     }
     
     // 4. Ejecutar la actualización segura

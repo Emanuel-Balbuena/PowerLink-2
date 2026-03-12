@@ -13,5 +13,12 @@ export const store = {
     getGroupName(groupId) {
         const group = this.userGroups.find(g => g.id_grupo === groupId);
         return group ? group.nombre_grupo : 'Sin Grupo';
+    },
+
+    updateDevice(updatedDevice) {
+        const index = this.userDevices.findIndex(d => d.id_dispositivo === updatedDevice.id_dispositivo);
+        if (index !== -1) {
+            this.userDevices[index] = { ...this.userDevices[index], ...updatedDevice };
+        }
     }
 };
