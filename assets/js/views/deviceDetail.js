@@ -64,12 +64,14 @@ export async function renderDeviceDetail(container, deviceId) {
                       <button type="button" class="btn btn-sm btn-outline-primary range-btn" data-range="monthly">Mes</button>
                     </div>
 
-                    <div class="d-flex gap-1">
-                        <button class="btn btn-sm btn-outline-info" id="btn-open-compare" title="Comparar">
+                    <div class="d-flex gap-1" style="margin-left:auto;">
+                        <button class="btn btn-sm btn-outline-info d-flex align-items-center" id="btn-open-compare" title="Comparar">
                             <i class="bi bi-bar-chart-steps"></i>
+                            <span class="ms-1 d-none d-sm-inline">Comparar</span>
                         </button>
-                        <button class="btn btn-sm btn-outline-success" id="btn-download-csv" title="Descargar Datos">
+                        <button class="btn btn-sm btn-outline-success d-flex align-items-center" id="btn-download-csv" title="Descargar Datos">
                             <i class="bi bi-download"></i>
+                            <span class="ms-1 d-none d-sm-inline">CSV</span>
                         </button>
                     </div>
 

@@ -55,12 +55,14 @@ export async function renderGroupDetail(container, groupId) {
                       <button type="button" class="btn btn-sm btn-outline-primary range-btn" data-range="weekly">Semana</button>
                       <button type="button" class="btn btn-sm btn-outline-primary range-btn" data-range="monthly">Mes</button>
                     </div>
-                    <div class="d-flex gap-1">
-                        <button class="btn btn-sm btn-outline-info" id="btn-open-compare" title="Comparar">
+                    <div class="d-flex gap-1" style="margin-left:auto;">
+                        <button class="btn btn-sm btn-outline-info d-flex align-items-center" id="btn-open-compare" title="Comparar">
                             <i class="bi bi-bar-chart-steps"></i>
+                            <span class="ms-1 d-none d-sm-inline">Comparar</span>
                         </button>
-                        <button class="btn btn-sm btn-outline-success" id="btn-download-csv" title="Descargar Informe">
+                        <button class="btn btn-sm btn-outline-success d-flex align-items-center" id="btn-download-csv" title="Descargar Informe">
                             <i class="bi bi-download"></i>
+                            <span class="ms-1 d-none d-sm-inline">CSV</span>
                         </button>
                     </div>
                 </div>
@@ -138,7 +140,46 @@ export async function renderGroupDetail(container, groupId) {
 }
 
 function getCompareModalHTML() {
-  return `<div class="modal fade" id="compareModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content" style="background-color: var(--surface-color); color: white;"><div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.1);"><h5 class="modal-title">Comparar Periodos</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><form id="compare-form"><div class="mb-3"><label class="form-label">Comparar con:</label><select class="form-select bg-dark text-light" style="border: 1px solid rgba(255,255,255,0.2);" id="compare-range-select"><option value="prev_day">Día Anterior</option><option value="prev_week">Semana Pasada</option></select></div><div class="d-grid"><button type="submit" class="btn btn-info">Generar Gráfica</button></div></form></div></div></div></div>`;
+  return `
+    <div class="modal fade" id="compareModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background-color: var(--surface-color); color: white;">
+          <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <h5 class="modal-title"><i class="bi bi-bar-chart-steps text-info"></i> Comparación Dinámica</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <form id="compare-form">
+              
+              <div class="mb-3">
+                <label class="form-label small text-light">Modo de Comparación:</label>
+                <select class="form-select bg-dark text-light" style="border: 1px solid rgba(255,255,255,0.2);" id="compare-type-select">
+                  <option value="daily">Días (Día vs Día)</option>
+                  <option value="weekly">Semanas (Semana vs Semana)</option>
+                  <option value="monthly">Meses (Mes vs Mes)</option>
+                </select>
+              </div>
+
+              <div class="row mb-3">
+                <div class="col-6">
+                  <label class="form-label small text-info"><i class="bi bi-calendar-event"></i> Periodo A:</label>
+                  <input type="date" id="compare-date-a" class="form-control bg-dark text-light" style="border: 1px solid rgba(255,255,255,0.2);" required>
+                </div>
+                <div class="col-6">
+                  <label class="form-label small text-warning"><i class="bi bi-calendar-event"></i> Periodo B:</label>
+                  <input type="date" id="compare-date-b" class="form-control bg-dark text-light" style="border: 1px solid rgba(255,255,255,0.2);" required>
+                </div>
+              </div>
+
+              <div class="d-grid mt-4">
+                <button type="submit" class="btn btn-info">Generar Gráfica</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 // --- LÓGICA VISUAL ---
@@ -207,53 +248,62 @@ async function loadChartData(groupId, range, date) {
     weekly: "Consumo Diario",
     monthly: "Consumo Diario",
   };
+  
+  let dateTitle = date;
+  if (range === 'weekly') dateTitle = utils.formatHumanWeek(date);
+
   document.getElementById(
     "chart-title"
-  ).innerText = `${rangeLabels[range]} (${date})`;
+  ).innerText = `${rangeLabels[range]} (${dateTitle})`;
 
   try {
-    let queryDate = date;
-    if (date !== "today" && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      queryDate = `${date}T00:00:00`;
+    let queryStart = "";
+    let queryEnd = "";
+    let safeDate = date;
+
+    if (safeDate === "today") {
+       const now = new Date();
+       const year = now.getFullYear();
+       const month = String(now.getMonth() + 1).padStart(2, "0");
+       const day = String(now.getDate()).padStart(2, "0");
+       safeDate = `${year}-${month}-${day}`;
     }
 
-    const data = await api.groups.getAnalytics(groupId, range, queryDate);
+    if (range === "daily") {
+      queryStart = `${safeDate}T00:00:00`;
+      queryEnd   = `${safeDate}T23:59:59`;
+    } else if (range === "weekly") {
+      const monday = utils.weekToDateString(safeDate);
+      const endObj = new Date(monday); 
+      endObj.setDate(endObj.getDate() + 6);
+      const sunday = `${endObj.getFullYear()}-${String(endObj.getMonth()+1).padStart(2,'0')}-${String(endObj.getDate()).padStart(2,'0')}`;
+      queryStart = `${monday}T00:00:00`;
+      queryEnd   = `${sunday}T23:59:59`;
+    } else if (range === "monthly") {
+      const [y, m] = safeDate.split("-");
+      const lastDay = new Date(y, m, 0).getDate();
+      queryStart = `${safeDate}-01T00:00:00`;
+      queryEnd   = `${safeDate}-${lastDay}T23:59:59`;
+    }
 
+    const data = await api.groups.getAnalyticsExact(groupId, range, queryStart, queryEnd);
     spinner.classList.add("d-none");
     canvas.style.opacity = "1";
 
     if (!data || !data.labels) throw new Error("Sin datos");
 
-    // FIX ETIQUETAS (String Parsing)
-    const monthNames = [
-      "ene",
-      "feb",
-      "mar",
-      "abr",
-      "may",
-      "jun",
-      "jul",
-      "ago",
-      "sep",
-      "oct",
-      "nov",
-      "dic",
-    ];
-    const cleanLabels = data.labels.map((label) => {
-      if (range === "daily" && label.includes("T")) {
-        return new Date(label).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-      }
-      if (label.includes("T")) {
-        const parts = label.split("T")[0].split("-");
-        return `${parseInt(parts[2])} ${monthNames[parseInt(parts[1]) - 1]}`;
-      }
-      return label;
-    });
-
-    renderChart(cleanLabels, data.values);
+    if (range === "daily") {
+       const standardLabels = generate24HourLabels();
+       const valuesNormalized = alignDataTo24Hours(data.labels, data.values);
+       renderChart(standardLabels, valuesNormalized);
+    } else if (range === "weekly") {
+       const standardLabels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+       const valuesNormalized = alignDataToWeekly(data.labels, data.values, queryStart);
+       renderChart(standardLabels, valuesNormalized);
+    } else {
+       const { labels: stdLabels, values: vals } = alignDataToMonthly(data.labels, data.values, queryStart);
+       renderChart(stdLabels, vals);
+    }
 
     const totalKwh = data.values.reduce((a, b) => a + b, 0);
     const totalCost = totalKwh * (userCostSettings.costo_kwh || 0);
@@ -279,65 +329,92 @@ async function loadChartData(groupId, range, date) {
 
 // === COMPARACIÓN ===
 
-async function loadComparisonData(groupId, compareMode) {
+async function loadComparisonData(groupId, mode, dateAStr, dateBStr) {
   const spinner = document.getElementById("chart-loading");
   spinner.classList.remove("d-none");
-  const activeBtn = document.querySelector(".range-btn.active");
-  const rangeA = activeBtn?.dataset.range || "daily";
-  const datePickerVal = document.getElementById("date-picker").value;
 
-  // Fechas Manuales
-  let parts = datePickerVal.split("-");
-  let dateBObj = new Date(parts[0], parts[1] - 1, parts[2]);
-  if (compareMode === "prev_day") dateBObj.setDate(dateBObj.getDate() - 1);
-  else if (compareMode === "prev_week")
-    dateBObj.setDate(dateBObj.getDate() - 7);
+  // El Backend espera T00:00:00
 
-  // Formatear YYYY-MM-DD localmente
-  const yearB = dateBObj.getFullYear();
-  const monthB = String(dateBObj.getMonth() + 1).padStart(2, "0");
-  const dayB = String(dateBObj.getDate()).padStart(2, "0");
-  const dateBStr = `${yearB}-${monthB}-${dayB}`;
+  let queryStartA = "";  let queryEndA = "";
+  let queryStartB = "";  let queryEndB = "";
+  let labelA = "";       let labelB = "";
 
-  const queryDateA = `${datePickerVal}T00:00:00`;
-  const queryDateB = `${dateBStr}T00:00:00`;
+  if (mode === "daily") {
+    queryStartA = `${dateAStr}T00:00:00`;
+    queryEndA   = `${dateAStr}T23:59:59`;
+    queryStartB = `${dateBStr}T00:00:00`;
+    queryEndB   = `${dateBStr}T23:59:59`;
+    labelA = dateAStr;
+    labelB = dateBStr;
+  } else if (mode === "weekly") {
+    const mondayA = utils.weekToDateString(dateAStr);
+    const mondayB = utils.weekToDateString(dateBStr);
+    
+    // Calculamos el Domingo (Lunes + 6 días)
+    const endAObj = new Date(mondayA); endAObj.setDate(endAObj.getDate() + 6);
+    const endBObj = new Date(mondayB); endBObj.setDate(endBObj.getDate() + 6);
+    
+    const sundayA = `${endAObj.getFullYear()}-${String(endAObj.getMonth()+1).padStart(2,'0')}-${String(endAObj.getDate()).padStart(2,'0')}`;
+    const sundayB = `${endBObj.getFullYear()}-${String(endBObj.getMonth()+1).padStart(2,'0')}-${String(endBObj.getDate()).padStart(2,'0')}`;
 
-  document.getElementById(
-    "chart-title"
-  ).innerText = `Comparativa: ${datePickerVal} vs ${dateBStr}`;
+    queryStartA = `${mondayA}T00:00:00`;
+    queryEndA   = `${sundayA}T23:59:59`;
+    queryStartB = `${mondayB}T00:00:00`;
+    queryEndB   = `${sundayB}T23:59:59`;
+    labelA = `Semana: ${utils.formatHumanWeek(dateAStr)}`;
+    labelB = `Semana: ${utils.formatHumanWeek(dateBStr)}`;
+  } else if (mode === "monthly") {
+    const [yA, mA] = dateAStr.split("-");
+    const [yB, mB] = dateBStr.split("-");
+    const lastDayA = new Date(yA, mA, 0).getDate(); 
+    const lastDayB = new Date(yB, mB, 0).getDate();
+
+    queryStartA = `${dateAStr}-01T00:00:00`;
+    queryEndA   = `${dateAStr}-${lastDayA}T23:59:59`;
+    queryStartB = `${dateBStr}-01T00:00:00`;
+    queryEndB   = `${dateBStr}-${lastDayB}T23:59:59`;
+    labelA = `Mes: ${dateAStr}`;
+    labelB = `Mes: ${dateBStr}`;
+  }
+
+  document.getElementById("chart-title").innerText = `Comparativa: ${labelA} vs ${labelB}`;
 
   try {
     const [dataA, dataB] = await Promise.all([
-      api.groups.getAnalytics(groupId, rangeA, queryDateA),
-      api.groups.getAnalytics(groupId, rangeA, queryDateB),
+      api.groups.getAnalyticsExact(groupId, mode, queryStartA, queryEndA),
+      api.groups.getAnalyticsExact(groupId, mode, queryStartB, queryEndB),
     ]);
+
     spinner.classList.add("d-none");
 
-    // Fix 24h para vista diaria
-    if (rangeA === "daily") {
+    if (mode === "daily") {
       const standardLabels = generate24HourLabels();
       const valuesANormalized = alignDataTo24Hours(dataA.labels, dataA.values);
       const valuesBNormalized = alignDataTo24Hours(dataB.labels, dataB.values);
-      renderChart(
-        standardLabels,
-        valuesANormalized,
-        valuesBNormalized,
-        "Actual",
-        "Comparativa"
-      );
-    } else {
-      // Para semana/mes usamos mapeo simple
-      renderChart(
-        dataA.labels,
-        dataA.values,
-        dataB.values,
-        "Actual",
-        "Comparativa"
-      );
+      renderChart(standardLabels, valuesANormalized, valuesBNormalized, labelA, labelB);
+    } else if (mode === "weekly") {
+      const standardLabels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+      const valuesANormalized = alignDataToWeekly(dataA.labels, dataA.values, queryStartA);
+      const valuesBNormalized = alignDataToWeekly(dataB.labels, dataB.values, queryStartB);
+      renderChart(standardLabels, valuesANormalized, valuesBNormalized, labelA, labelB);
+    } else if (mode === "monthly") {
+      const resultA = alignDataToMonthly(dataA.labels, dataA.values, queryStartA);
+      const resultB = alignDataToMonthly(dataB.labels, dataB.values, queryStartB);
+      
+      const maxDays = Math.max(resultA.labels.length, resultB.labels.length);
+      const standardLabels = Array.from({length: maxDays}, (_, i) => `${i+1}`);
+      const valuesANormalized = new Array(maxDays).fill(0);
+      const valuesBNormalized = new Array(maxDays).fill(0);
+
+      resultA.values.forEach((v, i) => valuesANormalized[i] = v);
+      resultB.values.forEach((v, i) => valuesBNormalized[i] = v);
+
+      renderChart(standardLabels, valuesANormalized, valuesBNormalized, labelA, labelB);
     }
   } catch (e) {
+    console.error(e);
     spinner.classList.add("d-none");
-    Notificaciones.mostrar("Error de comparación", e, "error");
+    Notificaciones.mostrar("Error al cargar datos para comparación.", "error");
   }
 }
 
@@ -386,6 +463,22 @@ function renderChart(
   currentChart = new Chart(ctx, {
     type: "bar",
     data: { labels, datasets },
+    plugins: [{
+      id: 'noData',
+      afterDraw: (chart) => {
+        const isDataEmpty = chart.data.datasets.every((ds) => ds.data.every((val) => val === 0));
+        if (isDataEmpty) {
+          const { ctx, width, height } = chart;
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = "normal 14px 'Inter', sans-serif";
+          ctx.fillStyle = "rgba(255,255,255,0.6)";
+          ctx.fillText('Sin información registrada para este rango de fechas.', width / 2, height / 2);
+          ctx.restore();
+        }
+      }
+    }],
     options: {
       responsive: true,
       maintainAspectRatio: false,
@@ -426,15 +519,65 @@ function alignDataTo24Hours(apiLabels, apiValues) {
   return filledValues;
 }
 
+function alignDataToWeekly(labels, values, weekStartStr) {
+  // 0: Lun, 1: Mar, 2: Mié, 3: Jue, 4: Vie, 5: Sáb, 6: Dom
+  const normalized = new Array(7).fill(0);
+  
+  const datePart = weekStartStr.split("T")[0];
+  const [yy, mm, dd] = datePart.split("-");
+  const startObj = new Date(parseInt(yy), parseInt(mm) - 1, parseInt(dd));
+
+  const allowedLabels = [];
+  const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+  for(let i=0; i<7; i++) {
+     const d = new Date(startObj);
+     d.setDate(d.getDate() + i);
+     const monthStr = meses[d.getMonth()];
+     const dayNum = parseInt(d.getDate(), 10);
+     allowedLabels.push(`${dayNum} ${monthStr}`);
+  }
+
+  for (let i = 0; i < labels.length; i++) {
+     const idx = allowedLabels.indexOf(labels[i]);
+     if (idx !== -1) {
+        normalized[idx] = values[i];
+     }
+  }
+
+  return normalized;
+}
+
+function alignDataToMonthly(labels, values, monthStartStr) {
+  const datePart = monthStartStr.split("T")[0];
+  const [yy, mm] = datePart.split("-");
+  const maxDays = new Date(parseInt(yy, 10), parseInt(mm, 10), 0).getDate();
+
+  const stdLabels = Array.from({length: maxDays}, (_, i) => `${i+1}`);
+  const normalized = new Array(maxDays).fill(0);
+
+  for (let i = 0; i < labels.length; i++) {
+     const parts = labels[i].split(" ");
+     if (parts.length >= 2) {
+       const day = parseInt(parts[0], 10);
+       if (!isNaN(day) && day >= 1 && day <= maxDays) {
+          normalized[day - 1] = values[i];
+       }
+     }
+  }
+  return { labels: stdLabels, values: normalized };
+}
+
 function setupListeners(groupId) {
   document
     .getElementById("btn-back")
     .addEventListener("click", () => (window.location.hash = "#devices"));
   const datePicker = document.getElementById("date-picker");
   datePicker.addEventListener("change", (e) => {
+    const selectedDate = e.target.value;
     const currentRange =
       document.querySelector(".range-btn.active").dataset.range;
-    loadChartData(groupId, currentRange, e.target.value);
+    loadChartData(groupId, currentRange, selectedDate);
   });
   document.querySelectorAll(".range-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => {
@@ -443,20 +586,73 @@ function setupListeners(groupId) {
         .forEach((b) => b.classList.remove("active"));
       e.target.classList.add("active");
       const range = e.target.dataset.range;
-      loadChartData(groupId, range, datePicker.value);
+      
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, "0");
+
+      if (range === 'daily') {
+          datePicker.type = 'date';
+          datePicker.value = `${year}-${month}-${day}`;
+      } else if (range === 'weekly') {
+          datePicker.type = 'week';
+          datePicker.value = utils.getCurrentWeekString();
+      } else if (range === 'monthly') {
+          datePicker.type = 'month';
+          datePicker.value = `${year}-${month}`;
+      }
+
+      const date = datePicker.value;
+      if (date) {
+        loadChartData(groupId, range, date);
+      } else {
+        const canvas = document.getElementById("group-chart");
+        if (currentChart) currentChart.destroy();
+        document.getElementById("chart-title").innerText = "Selecciona de calendario...";
+        document.getElementById("lbl-period-kwh").innerText = "--";
+        document.getElementById("lbl-period-cost").innerText = "--";
+      }
     });
   });
   document
     .getElementById("btn-open-compare")
-    .addEventListener("click", () =>
-      new bootstrap.Modal(document.getElementById("compareModal")).show()
-    );
+    .addEventListener("click", () => {
+      document.getElementById("compare-form").reset();
+      document.getElementById("compare-date-a").type = 'date';
+      document.getElementById("compare-date-b").type = 'date';
+      new bootstrap.Modal(document.getElementById("compareModal")).show();
+    });
+
+  // Listener para cambiar el TIPO de Input dinámicamente
+  document.getElementById("compare-type-select").addEventListener("change", (e) => {
+    const mode = e.target.value;
+    const inputA = document.getElementById("compare-date-a");
+    const inputB = document.getElementById("compare-date-b");
+    
+    // Limpiamos los inputs al cambiar de modo para evitar fechas invalidas arrastradas
+    inputA.value = '';
+    inputB.value = '';
+
+    if (mode === "daily") {
+      inputA.type = "date"; inputB.type = "date";
+    } else if (mode === "weekly") {
+      inputA.type = "week"; inputB.type = "week";
+    } else if (mode === "monthly") {
+      inputA.type = "month"; inputB.type = "month";
+    }
+  });
+
   document.getElementById("compare-form").addEventListener("submit", (e) => {
     e.preventDefault();
-    const mode = document.getElementById("compare-range-select").value;
+    const mode = document.getElementById("compare-type-select").value;
+    const dateA = document.getElementById("compare-date-a").value;
+    const dateB = document.getElementById("compare-date-b").value;
+    
     bootstrap.Modal.getInstance(document.getElementById("compareModal")).hide();
-    loadComparisonData(groupId, mode);
+    loadComparisonData(groupId, mode, dateA, dateB);
   });
+  
   document.getElementById("btn-download-csv").addEventListener("click", () => {
     if (!currentChart)
       return Notificaciones.mostrar("No hay datos para exportar.", "warning");

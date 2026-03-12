@@ -224,7 +224,36 @@ export const api = {
 
             const values = rawData.map(item => item.kwh_consumed);
             return { labels, values };
+        },
+        
+        // --- FUNCIÓN AÑADIDA PARA COMPARADOR EXACTO DE GRUPOS ---
+        getAnalyticsExact: async (groupId, range, startDateStr, endDateStr) => {
+            const params = new URLSearchParams({
+                id: groupId,
+                start: new Date(startDateStr).toISOString(),
+                end: new Date(endDateStr).toISOString()
+            });
+
+            console.log("📡 API Exacta (Grupos): Pidiendo datos raw...", params.toString());
+
+            const rawData = await invokeFunction(`get-analytics-group?${params.toString()}`, { method: 'GET' });
+
+            if (!rawData || !Array.isArray(rawData)) return { labels: [], values: [] };
+
+            const labels = rawData.map(item => {
+                if (range === 'daily') {
+                    const d = new Date(item.timestamp_bucket);
+                    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+                } 
+                const [year, month, day] = item.timestamp_bucket.split('T')[0].split('-');
+                const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+                return `${parseInt(day, 10)} ${meses[parseInt(month, 10) - 1]}`;
+            });
+
+            const values = rawData.map(item => item.kwh_consumed);
+            return { labels, values };
         }
+        // --------------------------------------------------------
     },
     analytics: {
         summary: () => invokeFunction('get-analytics-summary'),
