@@ -4,8 +4,8 @@
  * Versión 4.0: FIX SINCRONIZACIÓN TOTAL (Cálculo Local vs UTC)
  */
 import { api } from '../api.js';
-import { utils } from '../utils.js';
 import { Notificaciones } from '../notificaciones.js';
+import { utils } from '../utils.js';
 
 
 export async function renderDashboard(container) {
@@ -47,9 +47,6 @@ export async function renderDashboard(container) {
           <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="100">
             <div class="card h-100 service-item" style="background-color: var(--surface-color); border: none;">
               <div class="card-body text-center">
-                  <div class="icon mb-3" style="color: #ffffff;">
-                    <i class="bi bi-lightning-charge"></i>
-                  </div>
                   <h3>Consumo Hoy</h3>
                   <div class="d-flex justify-content-center align-items-baseline gap-2">
                      <h2 id="summary-kwh-today" style="font-weight: 700; color: var(--heading-color);">--</h2>
@@ -63,9 +60,6 @@ export async function renderDashboard(container) {
           <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="200">
             <div class="card h-100 service-item" style="background-color: var(--surface-color); border: none;">
               <div class="card-body text-center">
-                  <div class="icon mb-3" style="color: #ffffff;">
-                    <i class="bi bi-coin"></i>
-                  </div>
                   <h3>Costo Acumulado</h3>
                   <div class="d-flex justify-content-center align-items-baseline gap-2">
                      <h2 id="summary-cost-today" style="font-weight: 700; color: var(--heading-color);">--</h2>
@@ -78,9 +72,6 @@ export async function renderDashboard(container) {
           <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="300">
             <div class="card h-100 service-item" style="background-color: var(--surface-color); border: none;">
               <div class="card-body text-center">
-                  <div class="icon mb-3" style="color: #ffffff;">
-                    <i class="bi bi-calendar-check"></i>
-                  </div>
                   <h3>Proyección Mensual</h3>
                   <div class="d-flex justify-content-center align-items-baseline gap-2">
                      <h2 id="prediction-cost-month" style="font-weight: 700; color: var(--heading-color);">--</h2>

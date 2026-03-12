@@ -4,9 +4,9 @@
  * Versión Final V4.1: FIX COMPLETO (Comparison + Timezone + UI)
  */
 import { api } from "../api.js";
+import { Notificaciones } from "../notificaciones.js";
 import { store } from "../state.js";
 import { utils } from "../utils.js";
-import { Notificaciones } from "../notificaciones.js";
 
 let currentChart = null;
 let userCostSettings = { costo_kwh: 0, moneda: "MXN" };
