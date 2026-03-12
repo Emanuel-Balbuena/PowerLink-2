@@ -411,10 +411,11 @@ async function renderNotificationsPanel() {
 }
 
 function getAlertIcon(t) {
-  const i = { PICO_CONSUMO: "⚡", VAMPIRO: "🧛", OFFLINE: "🔌", ERROR: "⚠️" };
+  const i = { PICO_CONSUMO: "⚡", VAMPIRO: "🧛", OFFLINE: "🔌", ERROR: "⚠️", RECOMENDACION_COMUNIDAD: "🤝" };
   return i[t] || "ℹ️";
 }
 function formatAlertType(t) {
+  if (t === 'RECOMENDACION_COMUNIDAD') return 'Tip de la Comunidad';
   return t ? t.replace(/_/g, " ") : "Alerta";
 }
 

@@ -153,6 +153,11 @@ export async function renderDeviceDetail(container, deviceId) {
                                 </button>
                             </div>
                         </form>
+
+                        <!-- Widget Benchmark Gamificado -->
+                        <div id="benchmark-widget-container" class="mt-4 pt-3 border-top d-none" style="border-color: rgba(255,255,255,0.1) !important;">
+                            <!-- Benchmark inyectado via JS -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -221,8 +226,99 @@ async function loadStaticInfo(deviceId) {
     // Nueva lógica: si ya tiene marca y modelo, mostramos la insignia "Guardado"
     if (device.device_brand || device.device_model) {
         document.getElementById("badge-community-ok").classList.remove("d-none");
+        
+        // Bloquear inputs para que el usuario perciba que ya están fijos
+        document.getElementById("input-brand").disabled = true;
+        document.getElementById("input-model").disabled = true;
+        const btnSave = document.getElementById("btn-save-community");
+        if (btnSave) btnSave.classList.add("d-none");
+
+        renderCommunityBenchmark(device);
     }
   }
+}
+
+// NUEVA FUNCIÓN: Gamificación de Consumo Benchmark
+async function renderCommunityBenchmark(device) {
+    const container = document.getElementById("benchmark-widget-container");
+    if (!device.device_brand || !device.device_model || !device.device_type) {
+        container.classList.add("d-none");
+        return;
+    }
+
+    // Estado Loading
+    container.innerHTML = '<div class="text-center py-2"><span class="spinner-border spinner-border-sm text-info"></span> <span class="small text-muted">Consultando métricas de la comunidad...</span></div>';
+    container.classList.remove("d-none");
+
+    try {
+        const baseline = await api.community.getBaseline(device.device_type, device.device_brand, device.device_model);
+        if (baseline) {
+            const deviceStandby = device.baseline_data?.standby_avg || 0;
+            const communityStandby = baseline.avg_standby_kwh || 0;
+            
+            if (deviceStandby === 0) {
+               container.innerHTML = `<p class="small text-info mb-0"><i class="bi bi-hourglass-split"></i> <b>Comunidad encontrada:</b> Esperando recolectar más datos de tu dispositivo para dibujarlo en el tablero.</p>`;
+               return;
+            }
+
+            const diff = deviceStandby - communityStandby;
+            const diffPercent = communityStandby > 0 ? Math.round((Math.abs(diff) / communityStandby) * 100) : 0;
+            
+            let statusIcon = "bi-check-circle-fill text-success";
+            let statusText = `¡Tu equipo es más eficiente! Consumes un <b>${diffPercent}% menos</b> que el resto.`;
+            
+            if (diff > 0) {
+                if (diffPercent > 20) {
+                    statusIcon = "bi-exclamation-triangle-fill text-warning";
+                    statusText = `Consume un <b>${diffPercent}% más</b> que el resto en standby. ¡Intenta desenchufarlo!`;
+                } else {
+                    statusIcon = "bi-info-circle-fill text-info";
+                    statusText = `Consumo promedio aceptable (<b>${diffPercent}% arriba</b> del ideal).`;
+                }
+            }
+            
+            const maxVal = Math.max(deviceStandby, communityStandby) * 1.2;
+            const devicePercent = maxVal > 0 ? (deviceStandby / maxVal) * 100 : 0;
+            const communityPercent = maxVal > 0 ? (communityStandby / maxVal) * 100 : 0;
+
+            container.innerHTML = `
+                <h6 class="mb-3" style="color: #fff;"><i class="bi bi-bar-chart-fill text-primary"></i> Benchmark Global</h6>
+                
+                <div class="mb-2">
+                    <div class="d-flex justify-content-between small text-light mb-1">
+                        <span><i class="bi bi-person"></i> Tu Equipo (Standby)</span>
+                        <span>${deviceStandby.toFixed(3)} kW</span>
+                    </div>
+                    <div class="progress" style="height: 8px; background-color: rgba(255,255,255,0.1);">
+                        <div class="progress-bar ${diff > 0 && diffPercent > 20 ? 'bg-warning' : 'bg-success'}" role="progressbar" style="width: ${devicePercent}%"></div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between small text-light mb-1">
+                        <span><i class="bi bi-globe"></i> Comunidad (Promedio)</span>
+                        <span>${communityStandby.toFixed(3)} kW</span>
+                    </div>
+                    <div class="progress" style="height: 8px; background-color: rgba(255,255,255,0.1);">
+                        <div class="progress-bar bg-info" role="progressbar" style="width: ${communityPercent}%"></div>
+                    </div>
+                </div>
+                
+                <div class="d-flex align-items-start small mt-3" style="color: rgba(255,255,255,0.8);">
+                    <i class="bi ${statusIcon} fs-5 me-2 mt-n1"></i>
+                    <div>
+                      <span>${statusText}</span>
+                      <br><small style="color: rgba(255,255,255,0.4);">Basado en ${baseline.sample_size} usuarios</small>
+                    </div>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `<p class="small text-muted mb-0"><i class="bi bi-info-circle"></i> Aún no hay suficientes datos globales para este modelo. ¡Eres de los primeros pioneros de PowerLink!</p>`;
+        }
+    } catch(e) {
+        console.error("Error drawing benchmark", e);
+        container.innerHTML = `<p class="small text-muted mb-0"><i class="bi bi-exclamation-octagon"></i> Fallo al conectar con el servidor global.</p>`;
+    }
 }
 
 function renderLearningBanner(fechaRegistro) {
@@ -558,15 +654,25 @@ function setupListeners(deviceId) {
         document
           .getElementById("badge-community-ok")
           .classList.remove("d-none");
+          
+        // Bloqueamos inputs porque ya se guardaron con exito
+        document.getElementById("input-brand").disabled = true;
+        document.getElementById("input-model").disabled = true;
+        btn.classList.add("d-none");
+        
+        // Disparamos el renderizado del widget para verlo aparecer de inmediato
+        renderCommunityBenchmark(updatedDevice);
+
         Notificaciones.mostrar(
           "Datos comunitarios guardados correctamente.",
           "success"
         );
       } catch (err) {
         Notificaciones.mostrar("Error al guardar datos comunitarios.", "error");
-      } finally {
         btn.disabled = false;
         btn.innerText = originalText;
+      } finally {
+        // El finally ya no rehabilita el boton si fue exito, lo maneja el catch.
       }
     });
   document.getElementById("btn-download-csv").addEventListener("click", () => {
