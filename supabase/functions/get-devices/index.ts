@@ -37,6 +37,9 @@ Deno.serve(async (req)=>{
         ultimo_heartbeat,
         fecha_registro,
         id_grupo_fk,
+        device_brand,
+        device_model,
+        baseline_data,
         grupos ( nombre_grupo ) 
       `).eq('id_usuario_fk', user.id) // ¡La parte más importante!
     .order('fecha_registro', {

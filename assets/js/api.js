@@ -272,14 +272,10 @@ export const api = {
     },
     community: {
         getBaseline: async (deviceType, brand, model) => {
-            const { data, error } = await supabase
-                .from('community_baselines')
-                .select('*')
-                .eq('device_type', deviceType)
-                .eq('device_brand', brand)
-                .eq('device_model', model)
-                .single();
-            if (error && error.code !== 'PGRST116') throw error; // Ignoramos 'No rows found' (PGRST116)
+            const params = new URLSearchParams({ device_type: deviceType, brand, model });
+            const data = await invokeFunction(`get-community-baseline?${params.toString()}`, {
+                method: 'GET'
+            });
             return data;
         }
     }

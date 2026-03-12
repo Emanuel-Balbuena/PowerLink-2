@@ -247,7 +247,7 @@ async function renderCommunityBenchmark(device) {
     }
 
     // Estado Loading
-    container.innerHTML = '<div class="text-center py-2"><span class="spinner-border spinner-border-sm text-info"></span> <span class="small text-muted">Consultando métricas de la comunidad...</span></div>';
+    container.innerHTML = '<div class="text-center py-2"><span class="spinner-border spinner-border-sm text-info"></span> <span class="small" style="color: rgba(255,255,255,0.6);">Consultando métricas de la comunidad...</span></div>';
     container.classList.remove("d-none");
 
     try {
@@ -313,11 +313,11 @@ async function renderCommunityBenchmark(device) {
                 </div>
             `;
         } else {
-            container.innerHTML = `<p class="small text-muted mb-0"><i class="bi bi-info-circle"></i> Aún no hay suficientes datos globales para este modelo. ¡Eres de los primeros pioneros de PowerLink!</p>`;
+            container.innerHTML = `<p class="small mb-0" style="color: rgba(255,255,255,0.6);"><i class="bi bi-info-circle"></i> Aún no hay suficientes datos globales para este modelo. ¡Eres de los primeros pioneros de PowerLink!</p>`;
         }
     } catch(e) {
         console.error("Error drawing benchmark", e);
-        container.innerHTML = `<p class="small text-muted mb-0"><i class="bi bi-exclamation-octagon"></i> Fallo al conectar con el servidor global.</p>`;
+        container.innerHTML = `<p class="small mb-0" style="color: rgba(255,255,255,0.6);"><i class="bi bi-exclamation-octagon"></i> Fallo al conectar con el servidor global.</p>`;
     }
 }
 
