@@ -244,8 +244,8 @@ async function loadStaticInfo(deviceId) {
     device = store.getDevice(deviceId);
   }
   if (device) {
-    document.getElementById("detail-name").innerText =
-      device.nombre_personalizado;
+    console.log("DEBUG DEVICE DATA:", device);
+    document.getElementById("detail-name").innerText = device.nombre_personalizado;
     const badge = document.getElementById("detail-status-badge");
     const isOnline = utils.isOnline(device.ultimo_heartbeat);
     badge.innerText = isOnline ? "ONLINE" : "OFFLINE";
@@ -257,24 +257,79 @@ async function loadStaticInfo(deviceId) {
       renderLearningBanner(device.fecha_registro);
     else document.getElementById("learning-banner-container").innerHTML = "";
 
-    if (device.device_brand) {
-      document.getElementById("input-brand").value = device.device_brand;
-    }
-    if (device.device_model) {
-      document.getElementById("input-model").value = device.device_model;
-    }
+    if (device.device_brand) document.getElementById("input-brand").value = device.device_brand;
+    if (device.device_model) document.getElementById("input-model").value = device.device_model;
     
-    // Nueva lógica: si ya tiene marca y modelo, mostramos la insignia "Guardado"
-    if (device.device_brand || device.device_model) {
-        document.getElementById("badge-community-ok").classList.remove("d-none");
-        
-        // Bloquear inputs para que el usuario perciba que ya están fijos
-        document.getElementById("input-brand").disabled = true;
-        document.getElementById("input-model").disabled = true;
-        const btnSave = document.getElementById("btn-save-community");
-        if (btnSave) btnSave.classList.add("d-none");
+    // --- LÓGICA DE CICLO DE VIDA (ESTRATEGIA DE PINZA) ---
+    const formContainer = document.getElementById("community-form");
+    const badgeOk = document.getElementById("badge-community-ok");
+    const btnSave = document.getElementById("btn-save-community");
+    const inputBrand = document.getElementById("input-brand");
+    const inputModel = document.getElementById("input-model");
 
+    // Limpiamos banner previo si existe (para evitar duplicados al re-renderizar)
+    let existingBanner = document.getElementById("calibrating-banner");
+    if (existingBanner) existingBanner.remove();
+
+    if (device.community_status === 'LOCKED') {
+        // ESTADO LOCKED: Datos inmutables.
+        badgeOk.innerHTML = '<i class="bi bi-shield-check"></i> Aportando a la Comunidad';
+        badgeOk.classList.remove("d-none");
+        badgeOk.classList.replace("bg-success", "bg-success"); 
+        
+        inputBrand.disabled = true;
+        inputModel.disabled = true;
+        if (btnSave) btnSave.classList.add("d-none");
+        
         renderCommunityBenchmark(device);
+
+    } else if (device.community_status === 'CALIBRATING') {
+        // ESTADO CALIBRATING: Inputs abiertos, advirtiendo el periodo de gracia.
+        badgeOk.classList.add("d-none");
+        inputBrand.disabled = false;
+        inputModel.disabled = false;
+        if (btnSave) {
+            btnSave.classList.remove("d-none");
+            btnSave.innerText = "Actualizar Datos";
+        }
+
+        // --- NUEVA LÓGICA: CÁLCULO DINÁMICO DE DÍAS RESTANTES ---
+        let diasRestantesText = "7 días"; // Fallback por defecto
+        if (device.community_joined_at) {
+            const joinedDate = new Date(device.community_joined_at);
+            // Sumamos 7 días en milisegundos a la fecha en que se unió a la comunidad
+            const lockDate = new Date(joinedDate.getTime() + (7 * 24 * 60 * 60 * 1000));
+            const now = new Date();
+            const diffTime = lockDate - now;
+            
+            if (diffTime > 0) {
+                // Math.ceil para redondear hacia arriba (ej. si faltan 1.2 días, mostrará "2 días")
+                const diasRestantes = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                diasRestantesText = diasRestantes === 1 ? "1 día" : `${diasRestantes} días`;
+            } else {
+                diasRestantesText = "menos de 24 horas";
+            }
+        }
+        
+        const warningHTML = `<div id="calibrating-banner" class="alert alert-warning py-2 mb-3 small d-flex align-items-center" style="background-color: rgba(255, 193, 7, 0.1); border-color: rgba(255, 193, 7, 0.3); color: #ffc107;">
+            <i class="bi bi-hourglass-split me-2 fs-5"></i>
+            <div><strong>Datos registrados.</strong> Tienes <strong>${diasRestantesText}</strong> para modificar la marca/modelo antes de que el perfil se bloquee permanentemente.</div>
+        </div>`;
+        
+        formContainer.insertAdjacentHTML('beforebegin', warningHTML);
+        
+        renderCommunityBenchmark(device);
+
+    } else {
+        // ESTADO NULL: Aún no registra marca ni modelo
+        badgeOk.classList.add("d-none");
+        inputBrand.disabled = false;
+        inputModel.disabled = false;
+        if (btnSave) {
+            btnSave.classList.remove("d-none");
+            btnSave.innerText = "Guardar Datos";
+            btnSave.disabled = false;
+        }
     }
   }
 }
@@ -777,48 +832,33 @@ function setupListeners(deviceId) {
     bootstrap.Modal.getInstance(document.getElementById("compareModal")).hide();
     loadComparisonData(mode, dateA, dateB);
   });
-  document
-    .getElementById("community-form")
-    .addEventListener("submit", async (e) => {
+  document.getElementById("community-form").addEventListener("submit", async (e) => {
       e.preventDefault();
       const brand = document.getElementById("input-brand").value;
       const model = document.getElementById("input-model").value;
       const btn = document.getElementById("btn-save-community");
       const originalText = btn.innerText;
+      
       btn.disabled = true;
       btn.innerText = "Guardando...";
+      
       try {
         const updatedDevice = await api.devices.update(deviceId, {
           device_brand: brand,
           device_model: model,
         });
 
-        // Actualizamos el dispositivo en el store global para que recuerde los datos
-        // y no haya necesidad de recargar la página.
+        // Actualizamos store global
         store.updateDevice(updatedDevice);
 
-        document
-          .getElementById("badge-community-ok")
-          .classList.remove("d-none");
-          
-        // Bloqueamos inputs porque ya se guardaron con exito
-        document.getElementById("input-brand").disabled = true;
-        document.getElementById("input-model").disabled = true;
-        btn.classList.add("d-none");
-        
-        // Disparamos el renderizado del widget para verlo aparecer de inmediato
-        renderCommunityBenchmark(updatedDevice);
+        // Dejamos que la función principal re-dibuje los estados (CALIBRATING, etc.)
+        await loadStaticInfo(deviceId);
 
-        Notificaciones.mostrar(
-          "Datos comunitarios guardados correctamente.",
-          "success"
-        );
+        Notificaciones.mostrar("Datos comunitarios guardados/actualizados correctamente.", "success");
       } catch (err) {
-        Notificaciones.mostrar("Error al guardar datos comunitarios.", "error");
+        Notificaciones.mostrar(err.message || "Error al guardar datos comunitarios.", "error");
         btn.disabled = false;
         btn.innerText = originalText;
-      } finally {
-        // El finally ya no rehabilita el boton si fue exito, lo maneja el catch.
       }
     });
   document.getElementById("btn-download-csv").addEventListener("click", () => {

@@ -4,30 +4,37 @@
  * Versión 2.1: FIX TEXTOS OSCUROS (Alto Contraste)
  */
 import { api } from "../api.js";
+import { Notificaciones } from "../notificaciones.js";
 import { store } from "../state.js";
 import { utils } from "../utils.js";
-import { Notificaciones } from "../notificaciones.js";
 
 export async function renderDevices(container) {
   const deleteDeviceModalHTML = `
     <div class="modal fade" id="deleteDeviceModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-sm">
-            <div class="modal-content bg-dark border border-danger">
-                <div class="modal-header border-bottom border-danger">
-                    <h5 class="modal-title text-danger fw-bold"><i class="bi bi-x-octagon-fill me-2"></i> Eliminar Dispositivo</h5>
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border border-secondary">
+                <div class="modal-header border-bottom border-secondary">
+                    <h5 class="modal-title text-white fw-bold"><i class="bi bi-gear-wide-connected me-2"></i> Opciones de Dispositivo</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-4 text-center">
-                    <p class="text-white fw-bold mb-1">¿Estás seguro/a de que deseas eliminar <span id="device-name-confirm" class="text-info">este dispositivo</span>?</p>
-                    <p class="small text-white">
-                        <strong class="text-danger">¡Importante!</strong> Eliminarlo **borrará permanentemente** todos sus datos de consumo, lo desvinculará de cualquier grupo y se perderán sus datos de aprendizaje (IA).
-                    </p>
-                    <button type="button" class="btn btn-danger w-100 mb-2" id="btn-confirm-delete-device">
-                        <i class="bi bi-trash me-2"></i> Sí, Eliminar
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">
-                        Cancelar
-                    </button>
+                <div class="modal-body p-4">
+                    <p class="text-white fw-bold mb-3 text-center">¿Qué deseas hacer con <span id="device-name-confirm" class="text-info">este dispositivo</span>?</p>
+                    
+                    <div class="card bg-transparent border-info mb-3" style="cursor: pointer; border-width: 2px;">
+                        <div class="card-body p-3">
+                            <h6 class="text-info fw-bold"><i class="bi bi-archive text-info me-2"></i> Desvincular Medidor (Recomendado)</h6>
+                            <p class="small text-white-50 mb-3">Conserva el historial de consumo para tus gráficas globales y la comunidad, pero libera el hardware (ESP32) para registrar un nuevo equipo.</p>
+                            <button type="button" class="btn btn-outline-info w-100 btn-sm fw-bold" id="btn-confirm-archive-device">Desvincular y Archivar</button>
+                        </div>
+                    </div>
+
+                    <div class="card bg-transparent border-danger mb-2" style="border-width: 1px;">
+                        <div class="card-body p-3">
+                            <h6 class="text-danger fw-bold"><i class="bi bi-trash text-danger me-2"></i> Eliminar Permanentemente</h6>
+                            <p class="small text-white-50 mb-3">Borra todo el historial de consumo, configuraciones y datos de calibración. Esta acción no se puede deshacer.</p>
+                            <button type="button" class="btn btn-outline-danger w-100 btn-sm" id="btn-confirm-delete-device">Eliminar Permanentemente</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -248,7 +255,8 @@ async function loadData() {
 function renderDeviceList() {
   const container = document.getElementById("device-list-container");
   if (!container) return;
-  const devices = store.userDevices;
+  // Filtramos los archivados para que no se rendericen en la grilla principal
+  const devices = store.userDevices.filter(d => d.archivado !== true);
 
   if (devices.length === 0) {
     container.innerHTML = `<div class='col-12 text-center py-5' style="color: rgba(255,255,255,0.5);"><i class="bi bi-inbox fs-1 d-block mb-3" style="opacity:0.3"></i>No tienes dispositivos vinculados.</div>`;
@@ -542,72 +550,63 @@ function handleEditDeviceOpen(e) {
 }
 
 async function handleDeleteDevice(deviceId, deviceName) {
-  // 1. Mostrar el nombre en el modal
   document.getElementById("device-name-confirm").textContent = deviceName;
 
-  // 2. CREAR INSTANCIA DEL MODAL y mostrarlo
   const modalElement = document.getElementById("deleteDeviceModal");
-  // Si la instancia ya existe, la recuperamos para evitar crear múltiples
   let modalInstance = bootstrap.Modal.getInstance(modalElement);
   if (!modalInstance) {
     modalInstance = new bootstrap.Modal(modalElement);
   }
   modalInstance.show();
 
-  // 3. Crear una promesa para esperar la confirmación/cancelación
   return new Promise((resolve) => {
-    const btnConfirm = document.getElementById("btn-confirm-delete-device");
+    const btnDelete = document.getElementById("btn-confirm-delete-device");
+    const btnArchive = document.getElementById("btn-confirm-archive-device");
 
-    // --- FUNCIÓN DE LIMPIEZA CENTRALIZADA ---
     const cleanupAndResolve = (result) => {
-      // Aseguramos que los listeners se limpien
-      btnConfirm.removeEventListener("click", confirmListener);
+      btnDelete.removeEventListener("click", deleteListener);
+      btnArchive.removeEventListener("click", archiveListener);
       modalElement.removeEventListener("hidden.bs.modal", hideListener);
 
-      // Forzar cierre del modal si todavía está visible
-      if (modalInstance) {
-        modalInstance.hide();
-      }
-
-      // Solución Reforzada: Eliminación manual de clases de DOM
+      if (modalInstance) modalInstance.hide();
       document.body.classList.remove("modal-open");
       document.body.style.overflow = "";
-
-      // Eliminar manualmente el backdrop (puede no existir, pero es un seguro)
       const existingBackdrop = document.querySelector(".modal-backdrop");
-      if (existingBackdrop) {
-        existingBackdrop.remove();
-      }
+      if (existingBackdrop) existingBackdrop.remove();
 
       resolve(result);
     };
-    // ----------------------------------------
 
-    // Listener de confirmación
-    const confirmListener = async () => {
+    // Listener para Eliminar Permanentemente (Hard Delete)
+    const deleteListener = async () => {
       try {
-        // *** LÓGICA DE ELIMINACIÓN RESTAURADA ***
         await api.devices.delete(deviceId);
-        Notificaciones.mostrar("Dispositivo eliminado.", "success");
-        cleanupAndResolve(true); // Éxito
+        Notificaciones.mostrar("Dispositivo eliminado permanentemente.", "success");
+        cleanupAndResolve(true); 
       } catch (err) {
         Notificaciones.mostrar("Error al eliminar el dispositivo.", "error");
-        cleanupAndResolve(false); // Fallo
+        cleanupAndResolve(false);
       }
     };
 
-    // Listener para el evento de cierre/cancelación nativo de Bootstrap
-    const hideListener = () => {
-      // Si el modal se cerró por cualquier vía (Cancelar, Esc, Backdrop click),
-      // y no se ha resuelto (es decir, no fue el botón de confirmar), se resuelve como falso.
-      cleanupAndResolve(false); // Cancelado
+    // Listener para Archivar (Soft Delete + Liberar MAC)
+    const archiveListener = async () => {
+      try {
+        // Disparamos la bandera que configuramos en la Edge Function
+        await api.devices.update(deviceId, { archive_hardware: true });
+        Notificaciones.mostrar("Medidor desvinculado. Historial archivado con éxito.", "success");
+        cleanupAndResolve(true); 
+      } catch (err) {
+        Notificaciones.mostrar("Error al archivar el dispositivo.", "error");
+        cleanupAndResolve(false);
+      }
     };
 
-    // Asignar listeners
-    btnConfirm.addEventListener("click", confirmListener);
-    modalElement.addEventListener("hidden.bs.modal", hideListener, {
-      once: true,
-    });
+    const hideListener = () => cleanupAndResolve(false);
+
+    btnDelete.addEventListener("click", deleteListener);
+    btnArchive.addEventListener("click", archiveListener);
+    modalElement.addEventListener("hidden.bs.modal", hideListener, { once: true });
   });
 }
 

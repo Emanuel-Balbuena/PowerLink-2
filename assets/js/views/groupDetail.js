@@ -4,9 +4,9 @@
  * Versión Final: Alto Contraste + Indicadores LED
  */
 import { api } from "../api.js";
+import { Notificaciones } from "../notificaciones.js";
 import { store } from "../state.js";
 import { utils } from "../utils.js";
-import { Notificaciones } from "../notificaciones.js";
 
 let currentChart = null;
 let userCostSettings = { costo_kwh: 0, moneda: "MXN" };
@@ -197,7 +197,8 @@ async function loadGroupInfo(groupId) {
   let devices = store.userDevices;
   if (!devices.length) devices = await api.devices.list();
 
-  const myDevices = devices.filter((d) => d.id_grupo_fk == groupId);
+  // Filtramos por el grupo, pero descartando los archivados para que el frontend coincida con el backend
+  const myDevices = devices.filter((d) => d.id_grupo_fk == groupId && d.archivado !== true);
   const listContainer = document.getElementById("group-devices-list");
 
   if (myDevices.length === 0) {

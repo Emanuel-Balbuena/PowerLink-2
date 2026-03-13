@@ -1,7 +1,7 @@
 // supabase/functions/get-devices/index.ts
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.4';
 import { corsHeaders } from '../_shared/cors.ts';
-Deno.serve(async (req)=>{
+Deno.serve(async (req) => {
   // Manejo de la solicitud OPTIONS (preflight) para CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', {
@@ -27,25 +27,28 @@ Deno.serve(async (req)=>{
     // - Selecciona campos específicos
     // - Hace un 'join' para obtener el nombre del grupo (si existe)
     // - Filtra por 'id_usuario_fk' para seguridad
-    const { data: devices, error: dbError } = await supabase.from('dispositivos').select(`
-        id_dispositivo,
-        id_hardware,
-        nombre_personalizado,
-        device_type,
-        monitoring_status,
-        estado_rele_actual,
-        ultimo_heartbeat,
-        fecha_registro,
-        id_grupo_fk,
-        device_brand,
-        device_model,
-        baseline_data,
-        grupos ( nombre_grupo ) 
-      `).eq('id_usuario_fk', user.id) // ¡La parte más importante!
-    .order('fecha_registro', {
-      ascending: true
-    }) // Opcional: ordenar
-    ;
+    const { data: devices, error: dbError } = await supabase
+      .from('dispositivos')
+      .select(`
+    id_dispositivo,
+    id_hardware,
+    nombre_personalizado,
+    device_type,
+    monitoring_status,
+    estado_rele_actual,
+    ultimo_heartbeat,
+    fecha_registro,
+    id_grupo_fk,
+    device_brand,
+    device_model,
+    baseline_data,
+    community_status,
+    community_joined_at,
+    archivado,
+    grupos ( nombre_grupo ) 
+  `)
+      .eq('id_usuario_fk', user.id) // ¡La parte más importante!
+      .order('fecha_registro', { ascending: false });
     if (dbError) {
       throw dbError;
     }
