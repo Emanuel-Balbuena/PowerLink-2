@@ -1,94 +1,54 @@
 <div align="center">
-  <!-- Reemplaza la siguiente imagen con el logo de tu proyecto -->
-  <img src="https://via.placeholder.com/150?text=PowerLink+Logo" alt="PowerLink Logo" width="150" />
-  <h1>PowerLink IoT Smart Home Platform</h1>
-  <p>Plataforma avanzada de Internet de las Cosas para el monitoreo de energía en tiempo real, control de dispositivos en el hogar y proyecciones dinámicas de costos, construida mediante Supabase y microcontroladores ESP32.</p>
+  <img src="/assets/img/favicon.png" alt="PowerLink Logo" width="150" />[cite: 1]
+  <h1>PowerLink | Smart Home Energy Platform</h1>
+  <p>Plataforma integral de Internet de las Cosas (IoT) para el monitoreo eléctrico en tiempo real, gestión de dispositivos y proyecciones dinámicas de consumo.</p>
   
-  [![Licencia: MIT](https://img.shields.io/badge/Licencia-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-  [![Supabase](https://img.shields.io/badge/Supabase-Enabled-42ce9f?logo=supabase&logoColor=white)](https://supabase.com)
-  [![JavaScript Vanilla](https://img.shields.io/badge/JavaScript-Vanilla-F7DF1E?logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
+  [![Licencia: Propietaria](https://img.shields.io/badge/Licencia-Propietaria-red.svg)](https://choosealicense.com/no-permission/)
+  [![Supabase](https://img.shields.io/badge/Supabase-Enabled-42ce9f?logo=supabase&logoColor=white)](https://supabase.com)[cite: 1]
+  [![JavaScript Vanilla](https://img.shields.io/badge/JavaScript-Vanilla-F7DF1E?logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)[cite: 1]
 </div>
 
 ---
 
-## 📖 Acerca del Proyecto
+## 📖 Acerca del Producto
 
-**PowerLink** es una plataforma integral de hogar inteligente que une el software y el hardware para darte control total sobre el consumo eléctrico de tu casa. Permite emparejar múltiples módulos como el ESP32, ingerir de manera segura la lectura de los consumos, generar previsiones del costo eléctrico mensual con analítica, e integrarse con ecosistemas de terceros como Alexa o Google Assistant mediante OAuth 2.0 nativo. 
+**PowerLink** es una solución de hardware y software diseñada para otorgar a los usuarios control total y visibilidad sobre su consumo eléctrico. A través de una arquitectura IoT robusta, la plataforma ingiere lecturas de energía con alta precisión, genera analíticas de costos proyectados y permite la gestión remota de los espacios del hogar.
+
+Más que un simple monitor, PowerLink es un ecosistema inteligente que centraliza la telemetría eléctrica y la automatización del hogar en un panel de control accesible y de baja latencia.
 
 ## ✨ Características Principales
 
-- 📊 **Dashboard Analítico:** Visualización en tiempo real del consumo en kWh y calculadoras en vivo proyectando el costo mensual total.
-- 🔌 **Gestión Avanzada de Dispositivos:** Descubrimiento pasivo de hardware en la misma red, asignación manual de IPs, cruce de grupos (ej: "Oficina", "Sala") e interruptor en tiempo real (relés).
-- 🚨 **Detección Dinámica de Anomalías:** Motor backend automatizado que compara tu uso de hardware histórico y lanza alertas precisas (uso continuo excesivo, 'vampiros', picos anómalos).
-- 🎙️ **Integración Asistente de Voz (V6.2):** Servidor OAuth2 propio integrado para crear tus _Custom Skills_ e interactuar directamente (Ej: "Apaga la refrigeradora").
-- ⚡ **Tiempo Real Real:** Aprovechando los WebSockets y RPC de Supabase, PowerLink te refleja los cambios de dispositivo instantáneamente, sin necesidad de refrescar para conocer el estado actual.
+- 📊 **Dashboard Analítico:** Visualización en tiempo real del consumo en kWh y calculadoras en vivo proyectando el costo mensual total.[cite: 1]
+- 🔌 **Hardware de Precisión:** Integración de microcontroladores con sensores especializados para lecturas eléctricas exactas y sin interrupciones.
+- 🚨 **Detección Dinámica de Anomalías:** Motor backend automatizado que compara tu uso de hardware histórico y lanza alertas precisas (uso continuo excesivo, 'vampiros', picos anómalos).[cite: 1]
+- ⚡ **Sincronización en Tiempo Real:** Aprovechando los WebSockets y RPC de Supabase, PowerLink te refleja los cambios de dispositivo instantáneamente, sin necesidad de refrescar para conocer el estado actual.[cite: 1]
+- 🎙️ **Integración de Asistentes:** Capacidad de conexión con ecosistemas de terceros (Alexa/Google Assistant) mediante un servidor OAuth 2.0 nativo.
 
 ## 🏗️ Arquitectura del Sistema
 
-El ecosistema entero está compuesto de 3 componentes tecnológicos muy específicos:
+El ecosistema de PowerLink está construido sobre una arquitectura moderna, escalable y dividida en tres capas principales:
 
-1. **Frontend "One-Page" (SPA)**
-   - App diseñada a medida con **Vanilla JavaScript** y DOM dinámico para ser lo más ligera posible, utilizando **Chart.js** para renderizado avanzado y comparativas de datos temporales (Hoy, Semana y Mes).
-   - Componentes principales integrados en módulos modulares (AppShell principal, Modales, Vistas).
+### 1. Edge IoT Network (Capa de Hardware)
+El cerebro físico del sistema opera en la red local del usuario.
+- **Microcontrolador:** ESP32 programado en C/C++ para garantizar una ejecución eficiente y conectividad Wi-Fi estable.
+- **Telemetría:** Integración de sensores para la medición no invasiva y de alta precisión de voltaje, corriente, potencia activa y energía consumida.
+- **Comunicación:** Capa TCP/IP manejando conexiones MQTT ó endpoints HTTP a `/ingest` donde se autentica al equipo con su propia huella y encriptación.[cite: 1]
 
-2. **Backend "Serverless" (Supabase)**
-   - Toda la lógica se delega al BaaS: PostgreSQL, WebSockets para publicación de estado en tiempo real (Supabase Realtime) y Edge Functions.
-   - Cron Jobs integrados para la agregación de métricas nocturnas y creación de históricos al largo plazo.
+### 2. Backend "Serverless" (Capa de Datos y Lógica)
+Gestionado a través de **Supabase**, proporcionando una infraestructura BaaS (Backend-as-a-Service) de alto rendimiento.
+- **Base de Datos:** PostgreSQL para el almacenamiento relacional de usuarios, dispositivos y el histórico de métricas.
+- **Tiempo Real:** WebSockets para publicación de estado en tiempo real (Supabase Realtime) y Edge Functions.[cite: 1]
+- **Procesamiento Asíncrono:** Cron Jobs integrados para la agregación de métricas nocturnas y creación de históricos al largo plazo.[cite: 1]
 
-3. **Edge IoT Network (Hardware)**
-   - C/C++ en plataformas empotradas (ESP32/ESP8266).
-   - Capa TCP/IP manejando conexiones MQTT ó endpoints HTTP a `/ingest` donde se autentica al equipo con su propia huella y encriptación.
+### 3. Frontend Web (Capa de Presentación)
+Una Single Page Application (SPA) ligera, enfocada en la experiencia de usuario.
+- **Tecnologías:** App diseñada a medida con **Vanilla JavaScript** y DOM dinámico para ser lo más ligera posible, utilizando **Chart.js** para renderizado avanzado y comparativas de datos temporales (Hoy, Semana y Mes).[cite: 1]
+- **Diseño Modular:** Componentes principales integrados en módulos modulares (AppShell principal, Modales, Vistas).[cite: 1]
 
-## 🚀 Guía de Instalación y Uso Local
+## 🛡️ Enfoque en Ciberseguridad
 
-### Prerrequisitos
-- Node.js o extensión de Servidor Web (ej: Live Server en VSCode).
-- Tu propia instancia (en la nube o en docker local) de **Supabase**.
-- Módulos de Hardware ESP32 para las pruebas físicas.
+La protección de los datos del hogar es una prioridad en la arquitectura de PowerLink. La plataforma implementa:
 
-### Configuración del Panel Web (Frontend)
-
-1. **Clona este repositorio localmente**:
-   ```bash
-   git clone https://github.com/tu-usuario/PowerLink-2.git
-   cd PowerLink-2
-   ```
-
-2. **Conecta las credenciales de tu DB**:
-   Deberás proveer a la app (generalmente en `supabase.js`) con las llaves extraídas de tu entorno:
-   ```javascript
-   const supabaseUrl = 'TU_URL_AQUI_SUPABASE';
-   const supabaseKey = 'TU_LLAVE_ANONIMA_AQUI';
-   ```
-
-3. **Despliega la app**:
-   PowerLink está hecho con JS nativo sin requerir de entornos bundlers complicados, lánzalo estáticamente:
-   ```bash
-   npx serve .
-   ```
-   > Y dirígete a `http://localhost:3000` en tu navegador.
-
-## 📂 Organización del Arbol de Archivos (Frontend Stack)
-
-```text
-/assets
-  ├── /js
-  │   ├── app.js             (Flujos PWA, layout, guardias de sesión)
-  │   ├── supabase.js        (Cliente y conexión DB BaaS)
-  │   └── /views
-  │       ├── dashboard.js   (Módulo Resumen y Tarjetas analíticas)
-  │       ├── devices.js     (Listados y control lógico de relés)
-  │       ├── deviceDetail.js(Detalles profundos, control por fechas)
-  │       └── settings.js    (Formularios y ajustes de costos kWh)
-```
-
-## 🤝 ¿Cómo Contribuir?
-Las Pull Requests son 100% bienvenidas. Para proponer mayores novedades al core, por favor abre un _issue_ con anticipación para poder dialogar del cambio exacto a incorporar. 
-
-1. Haz un Fork y clona tu repositorio en el PC.
-2. Crea tu rama para una nueva característica (`git checkout -b feature/MiCaracteristicaMortal`).
-3. Comitea el estado con convención clara (`git commit -m 'feat: Añadir analítica avanzada'`).
-4. Súbelo (`git push origin feature/MiCaracteristicaMortal`) y abre el respectivo Pull Request.
-
----
-**PowerLink IoT 2026** - Construyendo cimientos accesibles para la energía inteligente, una línea de código a la vez.
+- **Autenticación de Hardware:** Cada nodo posee una huella de identidad única, asegurando que solo dispositivos autorizados puedan enviar datos.
+- **Protección de Datos en Tránsito:** Toda la comunicación entre el hardware, el backend y el cliente web está encriptada.
+- **Gestión de Sesiones:** Autenticación segura para los usuarios finales a través de políticas estrictas de base de datos.
