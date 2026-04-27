@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>Políticas de Empresa - PowerLink2</title>
+  <meta content="Políticas de empresa de PowerLink2" name="description" />
+  <meta content="IoT, Energía, ESP32, Políticas" name="keywords" />
+
+  <link href="assets/img/favicon.png" rel="icon" />
+  <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon" />
+
+  <link href="https://fonts.googleapis.com" rel="preconnect" />
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Lexend:wght@100..900&display=swap"
+    rel="stylesheet" />
+
+  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet" />
+  <link href="assets/vendor/aos/aos.css" rel="stylesheet" />
+  <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet" />
+  <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet" />
+
+  <link href="assets/css/main.css" rel="stylesheet" />
+
+  <style>
+    :root {
+      --background-color: #0a0b0e;
+      --surface-color: rgba(255, 255, 255, 0.03);
+      --accent-color: #3b82f6;
+      --accent-glow: rgba(59, 130, 246, 0.5);
+      --text-color: #ffffff;
+      --text-muted: rgba(255, 255, 255, 0.7);
+      --yellow-accent: #fbbf24;
+
+      --heading-font: "Lexend", sans-serif;
+      --body-font: "Fira Sans", sans-serif;
+    }
+
+    #canvas-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      background: radial-gradient(circle at 50% 50%, #111827 0%, #000000 100%);
+    }
+
+    body, .main, .section, .page-header {
+      background-color: transparent !important;
+      background: transparent !important;
+    }
+
+    body {
+      color: var(--text-color) !important;
+      font-family: var(--body-font) !important;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      font-family: var(--heading-font) !important;
+    }
+
+    p {
+      font-size: 1.1rem !important;
+      line-height: 1.7;
+      color: var(--text-muted);
+    }
+
+    .spotlight-card {
+      background-color: var(--surface-color) !important;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.3s ease, border-color 0.3s ease;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      padding: 2.5rem 2rem;
+      height: 100%;
+    }
+
+    .spotlight-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border-radius: 16px;
+      padding: 1.5px;
+      width: 100%;
+      background: radial-gradient(800px circle at var(--mouse-x) var(--mouse-y), rgba(255, 255, 255, 0.4), transparent 40%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .spotlight-card:hover::before {
+      opacity: 1;
+    }
+
+    .spotlight-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .header .header-toggle {
+      left: 15px !important;
+      right: auto !important;
+      top: 15px !important;
+      background-color: var(--accent-color) !important;
+      color: #fff !important;
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      z-index: 99999 !important;
+      box-shadow: 0 0 15px var(--accent-glow);
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #0a0b0e;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--accent-color);
+    }
+
+    strong {
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .text-white-small {
+      font-size: 1rem !important;
+      color: #cbd5e1;
+    }
+    
+    #footer {
+      background: rgba(0, 0, 0, 0.7) !important;
+      backdrop-filter: blur(10px);
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .page-title {
+      text-align: center;
+      margin-top: 120px;
+      margin-bottom: 60px;
+    }
+
+    .page-title h1 {
+      font-size: 3rem;
+      font-weight: 800;
+      color: var(--text-color);
+      text-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+      margin-bottom: 20px;
+    }
+
+    .page-title p {
+      font-size: 1.2rem !important;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .policy-icon {
+      font-size: 2.5rem;
+      color: var(--accent-color);
+      margin-bottom: 1.5rem;
+      display: inline-block;
+      background: rgba(59, 130, 246, 0.1);
+      padding: 20px;
+      border-radius: 50%;
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+    }
+    
+    .spotlight-card h3 {
+      font-size: 1.3rem;
+      color: #fff;
+      margin-bottom: 15px;
+      font-weight: 600;
+    }
+  </style>
+
+</head>
+
+<body class="inner-page">
+  <canvas id="canvas-container"></canvas>
+
+  <header id="header" class="header d-flex flex-column justify-content-center">
+    <i class="header-toggle d-xl-none bi bi-list"></i>
+    <nav id="navmenu" class="navmenu">
+      <ul>
+        <li>
+          <a href="index.html#hero"><i class="bi bi-house navicon"></i><span>Inicio</span></a>
+        </li>
+        <li>
+          <a href="index.html#about"><i class="bi bi-info-circle navicon"></i><span>¿Qué es?</span></a>
+        </li>
+        <li>
+          <a href="index.html#services"><i class="bi bi-hdd-network navicon"></i><span>Funciones</span></a>
+        </li>
+        <li>
+          <a href="index.html#pricing"><i class="bi bi-tag navicon"></i><span>Precios</span></a>
+        </li>
+        <li>
+          <a href="index.html#portfolio"><i class="bi bi-images navicon"></i><span>Galería</span></a>
+        </li>
+        <li>
+          <a href="index.html#team"><i class="bi bi-people navicon"></i><span>Equipo</span></a>
+        </li>
+        <li>
+          <a href="index.html#contact"><i class="bi bi-envelope navicon"></i><span>Contacto</span></a>
+        </li>
+        <li style="margin-top: 15px">
+          <a href="app.html" style="
+                background-color: var(--yellow-accent);
+                color: #000;
+                justify-content: center;
+                font-weight: bold;
+              ">
+            <i class="bi bi-box-arrow-in-right navicon" style="color: #000"></i>
+            <span>Acceder</span>
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="main">
+    <div class="container page-title" data-aos="fade-down">
+      <h1>Políticas de Empresa</h1>
+      <p>Conoce los estándares de calidad, seguridad y transparencia que respaldan a PowerLink2.</p>
+    </div>
+
+    <section class="section">
+      <div class="container">
+        <div class="row gy-4">
+          
+          <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="100">
+            <div class="spotlight-card text-center">
+              <i class="bi bi-box-seam policy-icon"></i>
+              <h3>Inventario Estratégico Continuo</h3>
+              <p>Mantenemos un stock permanente de componentes críticos, como nuestro procesador central (ESP32-S3) y sensores de precisión, a través de almacenes globales. Esto garantiza que la producción de tus equipos nunca se detenga por falta de suministro en el mercado.</p>
+            </div>
+          </div>
+
+          <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="200">
+            <div class="spotlight-card text-center">
+              <i class="bi bi-patch-check policy-icon"></i>
+              <h3>Calidad de Ensamblaje Garantizada</h3>
+              <p>Cada unidad de PowerLink pasa por una rigurosa Inspección Óptica Automatizada (AOI) en la fábrica. Además, aplicamos inspecciones por rayos X a los procesadores para asegurar que el aislamiento térmico sea perfecto y prevenir cualquier cortocircuito o sobrecalentamiento durante su uso.</p>
+            </div>
+          </div>
+
+          <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="300">
+            <div class="spotlight-card text-center">
+              <i class="bi bi-graph-up-arrow policy-icon"></i>
+              <h3>Escalabilidad a tu Medida</h3>
+              <p>Nuestros procesos de fabricación están diseñados para ser altamente eficientes. Esto nos permite ofrecerte la mejor relación costo-beneficio, ya sea que necesites unas pocas unidades para una instalación piloto o un despliegue masivo para todo un complejo.</p>
+            </div>
+          </div>
+
+          <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="400">
+            <div class="spotlight-card text-center">
+              <i class="bi bi-shield-check policy-icon" style="color: var(--yellow-accent); background: rgba(251, 191, 36, 0.1); box-shadow: 0 0 20px rgba(251, 191, 36, 0.2);"></i>
+              <h3>Diseño Certificado para Alta Tensión</h3>
+              <p>Antes de fabricar cualquier unidad, nuestros diseños pasan por una exhaustiva revisión de ingeniería (DFM). Validamos milimétricamente las distancias de seguridad (clearance) en las zonas de alta tensión para asegurar que tu red eléctrica esté protegida contra cualquier arco eléctrico o falla.</p>
+            </div>
+          </div>
+
+          <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="500">
+            <div class="spotlight-card text-center">
+              <i class="bi bi-award policy-icon" style="color: var(--yellow-accent); background: rgba(251, 191, 36, 0.1); box-shadow: 0 0 20px rgba(251, 191, 36, 0.2);"></i>
+              <h3>Durabilidad y Precisión Premium</h3>
+              <p>Utilizamos acabados de placa en Oro de Inmersión (ENIG). Esto significa que los contactos de tu medidor no se oxidarán con el paso del tiempo ni con la humedad, garantizando una lectura precisa y una larga vida útil del equipo.</p>
+            </div>
+          </div>
+
+          <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="600">
+            <div class="spotlight-card text-center">
+              <i class="bi bi-globe policy-icon" style="color: var(--yellow-accent); background: rgba(251, 191, 36, 0.1); box-shadow: 0 0 20px rgba(251, 191, 36, 0.2);"></i>
+              <h3>Logística Transparente y Segura</h3>
+              <p>Gestionamos toda nuestra cadena de suministro e importación con los más altos estándares internacionales. Nos aseguramos de que todos los equipos ingresen al país con la documentación comercial y aduanal en regla, para que los recibas en tiempo y forma.</p>
+            </div>
+          </div>
+
+          <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="700">
+            <div class="spotlight-card text-center">
+              <i class="bi bi-speedometer2 policy-icon" style="color: #10b981; background: rgba(16, 185, 129, 0.1); box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);"></i>
+              <h3>Pruebas Reales antes del Envío</h3>
+              <p>Ningún equipo llega a tus manos sin haber sido probado físicamente. Antes de empacar cada PowerLink, validamos su conectividad WiFi, su respuesta de comunicación a nuestros servidores y calibramos rigurosamente la lectura de voltaje para asegurar la máxima precisión en tus métricas de consumo.</p>
+            </div>
+          </div>
+
+          <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="800">
+            <div class="spotlight-card text-center">
+              <i class="bi bi-building-check policy-icon" style="color: #10b981; background: rgba(16, 185, 129, 0.1); box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);"></i>
+              <h3>Cumplimiento Normativo</h3>
+              <p>El hardware está diseñado respetando estrictamente las normas internacionales de aislamiento eléctrico. Nos alineamos con los estándares más exigentes del mercado (como NOM, FCC y CE) para brindarte total tranquilidad en tu instalación.</p>
+            </div>
+          </div>
+
+          <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="900">
+            <div class="spotlight-card text-center">
+              <i class="bi bi-check-all policy-icon" style="color: #10b981; background: rgba(16, 185, 129, 0.1); box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);"></i>
+              <h3>Sello de Calidad "Cero Defectos"</h3>
+              <p>Implementamos una política estricta de Pass/Fail desde la línea de ensamblaje. Solo los equipos que superan el 100% de nuestras pruebas funcionales son autorizados para su distribución, asegurando que tu medidor funcionará de manera impecable desde el momento de la instalación.</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="footer" class="footer position-relative py-4">
+    <div class="container text-center">
+      <h3 class="sitename mb-2 text-white">PowerLink2</h3>
+      <p class="text-white-small mb-4">Tu consumo, bajo control.</p>
+      <div class="social-links d-flex justify-content-center mb-4 gap-3">
+        <a href="#" class="rounded-circle bg-dark border border-secondary text-white p-2"><i class="bi bi-twitter-x"></i></a>
+        <a href="#" class="rounded-circle bg-dark border border-secondary text-white p-2"><i class="bi bi-facebook"></i></a>
+        <a href="#" class="rounded-circle bg-dark border border-secondary text-white p-2"><i class="bi bi-instagram"></i></a>
+      </div>
+      <div class="copyright small text-white-small mt-3">
+        <span>©</span> <strong class="px-1 text-white">PowerLink2</strong>
+        <span>Todos los derechos reservados</span>
+        <br>
+        <a href="politicas.html" class="text-white-small mt-2 d-inline-block" style="text-decoration: underline; color: #cbd5e1;">Políticas de Empresa</a>
+      </div>
+    </div>
+  </footer>
+
+  <a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center bg-primary"><i
+      class="bi bi-arrow-up-short"></i></a>
+  <div id="preloader"></div>
+
+  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/vendor/aos/aos.js"></script>
+  <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
+  <script src="assets/js/main.js"></script>
+
+  <script>
+    const cards = document.querySelectorAll(".spotlight-card");
+
+    cards.forEach((card) => {
+      card.addEventListener("mousemove", (e) => {
+        requestAnimationFrame(() => {
+          const rect = card.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          card.style.setProperty("--mouse-x", `${x}px`);
+          card.style.setProperty("--mouse-y", `${y}px`);
+        });
+      });
+    });
+
+    const canvas = document.getElementById("canvas-container");
+    const ctx = canvas.getContext("2d");
+    let width, height;
+    let particles = [];
+
+    const particleCount = 200;
+    const connectionDistance = 100;
+    const mouseDistance = 150;
+
+    let mouse = { x: null, y: null };
+
+    window.addEventListener("mousemove", (e) => {
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+    });
+
+    window.addEventListener("resize", resize);
+
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+
+    class Particle {
+      constructor() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.vx = (Math.random() - 0.5) * 0.5;
+        this.vy = (Math.random() - 0.5) * 0.5;
+        this.size = Math.random() * 2 + 1;
+      }
+
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+
+        if (this.x < 0 || this.x > width) this.vx *= -1;
+        if (this.y < 0 || this.y > height) this.vy *= -1;
+
+        if (mouse.x != null) {
+          let dx = mouse.x - this.x;
+          let dy = mouse.y - this.y;
+          let distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (distance < mouseDistance) {
+            const forceDirectionX = dx / distance;
+            const forceDirectionY = dy / distance;
+
+            const force = (mouseDistance - distance) / mouseDistance;
+
+            const directionX = forceDirectionX * force * 2;
+            const directionY = forceDirectionY * force * 2;
+
+            this.x -= directionX;
+            this.y -= directionY;
+          }
+        }
+      }
+
+      draw() {
+        ctx.fillStyle = "rgba(59, 130, 246, 0.8)";
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function initParticles() {
+      particles = [];
+      for (let i = 0; i < particleCount; i++) {
+        particles.push(new Particle());
+      }
+    }
+
+    function animateParticles() {
+      ctx.clearRect(0, 0, width, height);
+
+      for (let i = 0; i < particles.length; i++) {
+        particles[i].update();
+        particles[i].draw();
+
+        for (let j = i; j < particles.length; j++) {
+          let dx = particles[i].x - particles[j].x;
+          let dy = particles[i].y - particles[j].y;
+          let distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (distance < connectionDistance) {
+            ctx.beginPath();
+            let opacity = 1 - distance / connectionDistance;
+            ctx.strokeStyle = "rgba(59, 130, 246, " + opacity * 0.2 + ")";
+            ctx.lineWidth = 1;
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+      requestAnimationFrame(animateParticles);
+    }
+
+    resize();
+    initParticles();
+    animateParticles();
+  </script>
+</body>
+
+</html>
