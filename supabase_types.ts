@@ -121,6 +121,7 @@ export type Database = {
           modo_tarifa: string | null
           moneda: string | null
           presupuesto_meta: number | null
+          rol: string | null
           tarifa_basica: number | null
           tarifa_excedente: number | null
         }
@@ -131,6 +132,7 @@ export type Database = {
           modo_tarifa?: string | null
           moneda?: string | null
           presupuesto_meta?: number | null
+          rol?: string | null
           tarifa_basica?: number | null
           tarifa_excedente?: number | null
         }
@@ -141,6 +143,7 @@ export type Database = {
           modo_tarifa?: string | null
           moneda?: string | null
           presupuesto_meta?: number | null
+          rol?: string | null
           tarifa_basica?: number | null
           tarifa_excedente?: number | null
         }

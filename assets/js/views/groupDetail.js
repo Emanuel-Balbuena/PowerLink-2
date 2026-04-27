@@ -222,7 +222,7 @@ async function loadGroupInfo(groupId) {
                     <i class="bi bi-cpu text-white me-3 fs-4 opacity-50"></i>
                     
                     <div class="w-100">
-                        <div class="fw-bold text-white mb-1 text-truncate">${d.nombre_personalizado}</div>
+                        <div class="fw-bold text-white mb-1 text-truncate">${utils.escapeHTML(d.nombre_personalizado)}</div>
                         
                         <div class="d-flex align-items-center">
                             <div style="width: 8px; height: 8px; border-radius: 50%; background-color: ${ledColor}; box-shadow: ${ledShadow}; margin-right: 8px;"></div>
@@ -275,7 +275,7 @@ async function loadChartData(groupId, range, date) {
       queryEnd   = `${safeDate}T23:59:59`;
     } else if (range === "weekly") {
       const monday = utils.weekToDateString(safeDate);
-      const endObj = new Date(monday); 
+      const endObj = new Date(`${monday}T00:00:00`); 
       endObj.setDate(endObj.getDate() + 6);
       const sunday = `${endObj.getFullYear()}-${String(endObj.getMonth()+1).padStart(2,'0')}-${String(endObj.getDate()).padStart(2,'0')}`;
       queryStart = `${monday}T00:00:00`;
@@ -352,8 +352,8 @@ async function loadComparisonData(groupId, mode, dateAStr, dateBStr) {
     const mondayB = utils.weekToDateString(dateBStr);
     
     // Calculamos el Domingo (Lunes + 6 días)
-    const endAObj = new Date(mondayA); endAObj.setDate(endAObj.getDate() + 6);
-    const endBObj = new Date(mondayB); endBObj.setDate(endBObj.getDate() + 6);
+    const endAObj = new Date(`${mondayA}T00:00:00`); endAObj.setDate(endAObj.getDate() + 6);
+    const endBObj = new Date(`${mondayB}T00:00:00`); endBObj.setDate(endBObj.getDate() + 6);
     
     const sundayA = `${endAObj.getFullYear()}-${String(endAObj.getMonth()+1).padStart(2,'0')}-${String(endAObj.getDate()).padStart(2,'0')}`;
     const sundayB = `${endBObj.getFullYear()}-${String(endBObj.getMonth()+1).padStart(2,'0')}-${String(endBObj.getDate()).padStart(2,'0')}`;
@@ -524,6 +524,7 @@ function alignDataToWeekly(labels, values, weekStartStr) {
   // 0: Lun, 1: Mar, 2: Mié, 3: Jue, 4: Vie, 5: Sáb, 6: Dom
   const normalized = new Array(7).fill(0);
   
+  // Extraemos YYYY-MM-DD descartando la T00:00:00 y creamos Date Local absoluto
   const datePart = weekStartStr.split("T")[0];
   const [yy, mm, dd] = datePart.split("-");
   const startObj = new Date(parseInt(yy), parseInt(mm) - 1, parseInt(dd));
@@ -531,14 +532,17 @@ function alignDataToWeekly(labels, values, weekStartStr) {
   const allowedLabels = [];
   const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
+  // 1. Generar los 7 textos esperados para emparejar (Ej. "9 mar", "10 mar")
   for(let i=0; i<7; i++) {
      const d = new Date(startObj);
      d.setDate(d.getDate() + i);
      const monthStr = meses[d.getMonth()];
+     // Importante: parseamos a int para remover ceros (09 -> 9) como lo hace api.js
      const dayNum = parseInt(d.getDate(), 10);
      allowedLabels.push(`${dayNum} ${monthStr}`);
   }
 
+  // 2. Colocar cada valor en su respectiva cubeta pre-calculada de los 7 días
   for (let i = 0; i < labels.length; i++) {
      const idx = allowedLabels.indexOf(labels[i]);
      if (idx !== -1) {

@@ -42,19 +42,33 @@ Deno.serve(async (req)=>{
       throw new Error('Se requieren "id_hardware" (string) y "estado" (boolean).');
     }
 
-    // 4. Buscar el dispositivo y verificar propiedad
-    const { data: device, error: checkError } = await userClient.from('dispositivos')
-    .select('id_hardware')
+    // 4. Buscar el dispositivo
+    const supabaseAdmin = createAdminClient();
+    const { data: device, error: checkError } = await supabaseAdmin.from('dispositivos')
+    .select('id_hardware, id_usuario_fk')
     .eq('id_hardware', id_hardware)
-    .eq('id_usuario_fk', user.id)
     .single();
     
     if (checkError || !device) {
+      throw new Error('Dispositivo no encontrado.');
+    }
+
+    // 4.1 Verificar autorización (dueño o admin)
+    let isAuthorized = false;
+    if (device.id_usuario_fk === user.id) {
+        isAuthorized = true;
+    } else {
+        const { data: userConfig } = await supabaseAdmin.from('config_usuarios').select('rol').eq('id_usuario_fk', user.id).single();
+        if (userConfig && userConfig.rol === 'admin') {
+            isAuthorized = true;
+        }
+    }
+
+    if (!isAuthorized) {
       throw new Error('Dispositivo no encontrado o no autorizado.');
     }
 
-    // 5. Crear el cliente ADMIN
-    const supabaseAdmin = createAdminClient();
+    // (El cliente admin ya fue creado arriba)
 
     // 6. Actualizar la base de datos (Fuente de Verdad)
     const { error: updateError } = await supabaseAdmin.from('dispositivos').update({

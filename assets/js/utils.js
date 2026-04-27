@@ -12,6 +12,17 @@ export const utils = {
     }).format(amount || 0);
   },
 
+  // Sanitiza strings para prevenir XSS
+  escapeHTML(str) {
+    if (!str) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  },
+
   // Formatea kWh con 3 decimales
   formatKwh(kwh) {
     return (kwh || 0).toFixed(3) + ' kWh';

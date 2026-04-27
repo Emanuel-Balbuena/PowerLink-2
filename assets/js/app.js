@@ -75,6 +75,17 @@ function init() {
 
       // Servicios
       if (!isStandalone) {
+        // Verificar rol de admin
+        api.user.getSettings().then(settings => {
+           if (settings && settings.rol === 'admin') {
+               const dashLink = document.querySelector('a[href="#dashboard"]');
+               if (dashLink) dashLink.href = "#admin-dashboard";
+               
+               const devLink = document.querySelector('a[href="#devices"]');
+               if (devLink) devLink.href = "#admin-devices";
+           }
+        }).catch(e => console.error("Error verificando rol:", e));
+
         startNotificationService();
         setupNotificationListener();
         setupMobileNav();

@@ -468,7 +468,7 @@ async function loadChartData(deviceId, range, date) {
       queryEnd   = `${safeDate}T23:59:59`;
     } else if (range === "weekly") {
       const monday = utils.weekToDateString(safeDate);
-      const endObj = new Date(monday); 
+      const endObj = new Date(`${monday}T00:00:00`); 
       endObj.setDate(endObj.getDate() + 6);
       const sunday = `${endObj.getFullYear()}-${String(endObj.getMonth()+1).padStart(2,'0')}-${String(endObj.getDate()).padStart(2,'0')}`;
       queryStart = `${monday}T00:00:00`;
@@ -548,8 +548,8 @@ async function loadComparisonData(mode, dateAStr, dateBStr) {
     const mondayB = utils.weekToDateString(dateBStr);
     
     // Calculamos el Domingo (Lunes + 6 días)
-    const endAObj = new Date(mondayA); endAObj.setDate(endAObj.getDate() + 6);
-    const endBObj = new Date(mondayB); endBObj.setDate(endBObj.getDate() + 6);
+    const endAObj = new Date(`${mondayA}T00:00:00`); endAObj.setDate(endAObj.getDate() + 6);
+    const endBObj = new Date(`${mondayB}T00:00:00`); endBObj.setDate(endBObj.getDate() + 6);
     
     const sundayA = `${endAObj.getFullYear()}-${String(endAObj.getMonth()+1).padStart(2,'0')}-${String(endAObj.getDate()).padStart(2,'0')}`;
     const sundayB = `${endBObj.getFullYear()}-${String(endBObj.getMonth()+1).padStart(2,'0')}-${String(endBObj.getDate()).padStart(2,'0')}`;

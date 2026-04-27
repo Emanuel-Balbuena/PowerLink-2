@@ -30,14 +30,30 @@ Deno.serve(async (req: Request) => {
       throw new Error('El parámetro "id" es requerido en la URL.')
     }
 
-    // 3. Ejecutar el borrado seguro
-    // .eq('id_usuario_fk', user.id) previene que un usuario borre dispositivos de otro
+    // 3. Obtener el hardware actual para liberarlo
+    const { data: currentDevice, error: fetchError } = await supabase
+      .from('dispositivos')
+      .select('id_hardware')
+      .eq('id_dispositivo', deviceId)
+      .eq('id_usuario_fk', user.id)
+      .single()
+
+    if (fetchError || !currentDevice) {
+      throw new Error('Dispositivo no encontrado o no autorizado.')
+    }
+
+    const newHwId = currentDevice.id_hardware ? `${currentDevice.id_hardware}_archived_${Date.now()}` : null;
+
+    // 4. Ejecutar el borrado lógico (Ocultar y renombrar HW)
     const { data: deletedDevice, error: dbError } = await supabase
       .from('dispositivos')
-      .delete()
+      .update({ 
+        archivado: true,
+        id_hardware: newHwId || undefined 
+      })
       .eq('id_dispositivo', deviceId)  // El dispositivo específico
       .eq('id_usuario_fk', user.id)   // Que además pertenezca al usuario
-      .select()                       // Devuélveme los datos del dispositivo borrado
+      .select()                       // Devuélveme los datos del dispositivo archivado
       .single()                       // Esperamos uno solo
 
     if (dbError) {

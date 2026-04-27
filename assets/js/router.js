@@ -11,6 +11,9 @@ import { renderSettings } from "./views/settings.js";
 import { renderConsent } from "./views/consent.js";
 import { renderVerifyEmail } from "./views/verifyEmail.js";
 import { renderResetPassword } from "./views/resetPassword.js";
+import { renderAdminDashboard } from "./views/adminDashboard.js";
+import { renderAdminDevices } from "./views/adminDevices.js";
+import { renderAdminDeviceDetail } from "./views/adminDeviceDetail.js";
 
 export async function handleRouting() {
   const appContent = document.getElementById("app-content");
@@ -98,6 +101,13 @@ export async function handleRouting() {
       await renderSettings(appContent);
     } else if (finalHash.startsWith("#consent")) {
       await renderConsent(appContent);
+    } else if (finalHash === "#admin-dashboard") {
+      await renderAdminDashboard(appContent);
+    } else if (finalHash === "#admin-devices") {
+      await renderAdminDevices(appContent);
+    } else if (finalHash.startsWith("#admin-devices/")) {
+      const id = finalHash.split("/")[1];
+      await renderAdminDeviceDetail(appContent, id);
     }
 
     if (window.AOS) setTimeout(() => window.AOS.refresh(), 100);

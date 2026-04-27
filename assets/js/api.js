@@ -42,6 +42,14 @@ export const api = {
             body: payload
         })
     },
+    admin: {
+        getStats: () => invokeFunction('admin-get-stats'),
+        getDevices: (page = 1, limit = 20) => {
+            const qs = new URLSearchParams({ page, limit }).toString();
+            return invokeFunction(`admin-get-devices?${qs}`);
+        },
+        deleteDevice: (hwId) => invokeFunction(`admin-unlink-device?id=${hwId}`, { method: 'DELETE' })
+    },
     devices: {
         list: () => invokeFunction('get-devices'),
 

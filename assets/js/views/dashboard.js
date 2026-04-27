@@ -242,8 +242,8 @@ function renderQuickDevices(devices, consumptionMap) {
                     </div>
                     
                     <div style="min-width: 0;">
-                        <h6 class="mb-0 text-truncate" style="color: var(--default-color); font-weight: 500;" title="${dev.nombre_personalizado}">
-                            ${dev.nombre_personalizado}
+                        <h6 class="mb-0 text-truncate" style="color: var(--default-color); font-weight: 500;" title="${utils.escapeHTML(dev.nombre_personalizado)}">
+                            ${utils.escapeHTML(dev.nombre_personalizado)}
                         </h6>
                         
                         <div class="d-flex align-items-center small mt-1">

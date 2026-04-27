@@ -92,11 +92,18 @@ export async function renderDevices(container) {
                     </button>
                 </div>
                 
-                <div id="device-list-container" class="row gy-4">
+                <div id="device-list-container" class="row gy-4 mb-5">
                   <div class="col-12 text-center py-5">
                       <div class="spinner-border text-primary" role="status"></div>
                       <p class="mt-2" style="color: rgba(255,255,255,0.6);">Buscando equipos...</p>
                   </div>
+                </div>
+
+                <!-- Historial de Equipos (Archivados) -->
+                <div id="archived-devices-section" class="d-none mt-5 pt-3 border-top" style="border-color: rgba(255,255,255,0.1) !important;">
+                    <h5 class="mb-4 text-white-50"><i class="bi bi-clock-history me-2"></i>Historial de Consumos Pasados</h5>
+                    <div id="archived-device-list-container" class="row gy-4 mb-4">
+                    </div>
                 </div>
             </div>
 
@@ -254,90 +261,103 @@ async function loadData() {
 
 function renderDeviceList() {
   const container = document.getElementById("device-list-container");
+  const archivedContainer = document.getElementById("archived-device-list-container");
+  const archivedSection = document.getElementById("archived-devices-section");
   if (!container) return;
-  // Filtramos los archivados para que no se rendericen en la grilla principal
-  const devices = store.userDevices.filter(d => d.archivado !== true);
 
-  if (devices.length === 0) {
+  const activeDevices = store.userDevices.filter(d => d.archivado !== true);
+  const archivedDevices = store.userDevices.filter(d => d.archivado === true);
+
+  if (activeDevices.length === 0) {
     container.innerHTML = `<div class='col-12 text-center py-5' style="color: rgba(255,255,255,0.5);"><i class="bi bi-inbox fs-1 d-block mb-3" style="opacity:0.3"></i>No tienes dispositivos vinculados.</div>`;
-    return;
+  } else {
+    container.innerHTML = activeDevices.map(dev => generateDeviceCardHTML(dev, true)).join("");
   }
 
-  container.innerHTML = devices
-    .map((dev) => {
-      const online = utils.isOnline(dev.ultimo_heartbeat);
-      const grp = store.userGroups.find((g) => g.id_grupo === dev.id_grupo_fk);
-      const grpName = grp ? grp.nombre_grupo : "General";
+  if (archivedContainer && archivedSection) {
+    if (archivedDevices.length === 0) {
+      archivedSection.classList.add("d-none");
+    } else {
+      archivedSection.classList.remove("d-none");
+      archivedContainer.innerHTML = archivedDevices.map(dev => generateDeviceCardHTML(dev, false)).join("");
+    }
+  }
 
-      // --- LÍNEA AÑADIDA PARA DECLARAR TYPEICON ---
-      const typeIcon = getTypeIcon(dev.device_type);
-      // --------------------------------------------
+  setupCardListeners(container);
+  if (archivedContainer) setupCardListeners(archivedContainer);
+}
 
-      const cardOpacity = online ? "1" : "0.7";
+function generateDeviceCardHTML(dev, isActive) {
+  const online = isActive ? utils.isOnline(dev.ultimo_heartbeat) : false;
+  const grp = store.userGroups.find((g) => g.id_grupo === dev.id_grupo_fk);
+  const grpName = utils.escapeHTML(grp ? grp.nombre_grupo : "General");
+  const typeIcon = getTypeIcon(dev.device_type);
 
-      // --- NUEVO ESTILO LED (Igual que GroupDetail) ---
-      const ledColor = online ? "#00ff00" : "#dc3545"; // Verde Neón
-      const ledShadow = online ? "0 0 8px #00ff00" : "none"; // Glow
-      // -----------------------------------------------
+  // Visuals for Active vs Archived
+  const cardOpacity = isActive ? (online ? "1" : "0.7") : "0.5";
+  const ledColor = online ? "#00ff00" : "#dc3545"; 
+  const ledShadow = online ? "0 0 8px #00ff00" : "none"; 
 
-      return `
-      <div class="col-lg-4 col-md-6">
-        <div class="card h-100 position-relative" style="background-color: var(--surface-color); border: none; opacity: ${cardOpacity};">
-          <div class="card-body p-4">
-            
-            <div class="d-flex justify-content-between align-items-start mb-3">
-                <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 50px; height: 50px; background-color: rgba(5, 99, 187, 0.15); color: var(--accent-color);">
-                    <i class="bi ${typeIcon} fs-3"></i>
-                </div>
-                <div class="dropdown">
-                    <button class="btn btn-link p-0" type="button" data-bs-toggle="dropdown" style="color: rgba(255,255,255,0.5);">
-                        <i class="bi bi-three-dots-vertical"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-dark">
-                        <li><a class="dropdown-item btn-edit-device" href="#" data-id="${
-                          dev.id_dispositivo
-                        }"><i class="bi bi-pencil me-2"></i> Editar</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-danger btn-delete-device" href="#" data-id="${
-                          dev.id_dispositivo
-                        }" data-name="${
-        dev.nombre_personalizado.replace(/"/g, '').replace(/'/g, '')
-      }"><i class="bi bi-trash me-2"></i> Eliminar</a></li>
-                    </ul>
-                </div>
-            </div>
-            
-            <h5 class="card-title fw-bold text-white mb-1 text-truncate">${
-              dev.nombre_personalizado
-            }</h5>
-            <p class="small mb-4" style="color: rgba(255,255,255,0.6);"><i class="bi bi-tag-fill me-1"></i> ${grpName}</p>
-            
-            <div class="d-flex align-items-center justify-content-between mt-auto">
-                <div class="d-flex align-items-center">
-                    <span class="d-inline-block rounded-circle me-2" style="width: 8px; height: 8px; background-color: ${ledColor}; box-shadow: ${ledShadow};"></span>
-                    <span style="font-size: 0.85rem; color: rgba(255,255,255,0.6);">${
-                      online ? "Online" : "Offline"
-                    }</span>
-                </div>
-                <div class="form-check form-switch">
-                    <input class="form-check-input relay-toggle" type="checkbox" role="switch" data-hw-id="${
-                      dev.id_hardware
-                    }" ${dev.estado_rele_actual ? "checked" : ""} ${
-        !online ? "disabled" : ""
-      } style="width: 3em; height: 1.5em; cursor: pointer;">
-                </div>
-            </div>
-            <a href="#devices/${
-              dev.id_dispositivo
-            }" class="stretched-link" style="z-index: 1;" title="Ver detalles"></a>
-            <style>.form-check-input, .dropdown { position: relative; z-index: 2; }</style>
+  // Menú Opciones (Solo Activos)
+  let menuHtml = '';
+  if (isActive) {
+      menuHtml = `
+      <div class="dropdown">
+          <button class="btn btn-link p-0" type="button" data-bs-toggle="dropdown" style="color: rgba(255,255,255,0.5);">
+              <i class="bi bi-three-dots-vertical"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-dark">
+              <li><a class="dropdown-item btn-edit-device" href="#" data-id="${dev.id_dispositivo}"><i class="bi bi-pencil me-2"></i> Editar</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-danger btn-delete-device" href="#" data-id="${dev.id_dispositivo}" data-name="${utils.escapeHTML(dev.nombre_personalizado.replace(/"/g, '').replace(/'/g, ''))}"><i class="bi bi-trash me-2"></i> Eliminar</a></li>
+          </ul>
+      </div>`;
+  } else {
+      menuHtml = `<span class="badge bg-secondary">Archivado</span>`;
+  }
+
+  // Switch Toggle (Solo Activos)
+  let toggleHtml = '';
+  if (isActive) {
+      toggleHtml = `
+      <div class="form-check form-switch">
+          <input class="form-check-input relay-toggle" type="checkbox" role="switch" data-hw-id="${dev.id_hardware}" ${dev.estado_rele_actual ? "checked" : ""} ${!online ? "disabled" : ""} style="width: 3em; height: 1.5em; cursor: pointer;">
+      </div>`;
+  }
+
+  // Footer status
+  let statusHtml = isActive 
+    ? `<div class="d-flex align-items-center">
+            <span class="d-inline-block rounded-circle me-2" style="width: 8px; height: 8px; background-color: ${ledColor}; box-shadow: ${ledShadow};"></span>
+            <span style="font-size: 0.85rem; color: rgba(255,255,255,0.6);">${online ? "Online" : "Offline"}</span>
+       </div>`
+    : `<div class="d-flex align-items-center"><i class="bi bi-clock-history me-2" style="color: rgba(255,255,255,0.5);"></i><span style="font-size: 0.85rem; color: rgba(255,255,255,0.5);">Histórico</span></div>`;
+
+  return `
+    <div class="col-lg-4 col-md-6">
+      <div class="card h-100 position-relative" style="background-color: var(--surface-color); border: none; opacity: ${cardOpacity}; filter: ${!isActive ? 'grayscale(0.8)' : 'none'};">
+        <div class="card-body p-4">
+          
+          <div class="d-flex justify-content-between align-items-start mb-3">
+              <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 50px; height: 50px; background-color: rgba(5, 99, 187, 0.15); color: var(--accent-color);">
+                  <i class="bi ${typeIcon} fs-3"></i>
+              </div>
+              ${menuHtml}
           </div>
+          
+          <h5 class="card-title fw-bold text-white mb-1 text-truncate">${utils.escapeHTML(dev.nombre_personalizado)}</h5>
+          <p class="small mb-4" style="color: rgba(255,255,255,0.6);"><i class="bi bi-tag-fill me-1"></i> ${grpName}</p>
+          
+          <div class="d-flex align-items-center justify-content-between mt-auto">
+              ${statusHtml}
+              ${toggleHtml}
+          </div>
+          <a href="#devices/${dev.id_dispositivo}" class="stretched-link" style="z-index: 1;" title="Ver detalles"></a>
+          <style>.form-check-input, .dropdown { position: relative; z-index: 2; }</style>
         </div>
       </div>
-    `;
-    })
-    .join("");
-  setupCardListeners(container);
+    </div>
+  `;
 }
 
 function renderGroupList() {
@@ -360,7 +380,7 @@ function renderGroupList() {
                     <i class="bi bi-collection fs-5"></i>
                 </div>
                 <div>
-                    <span class="fw-medium d-block">${g.nombre_grupo}</span>
+                    <span class="fw-medium d-block">${utils.escapeHTML(g.nombre_grupo)}</span>
                 </div>
             </div>
             <div>
@@ -368,10 +388,10 @@ function renderGroupList() {
                     <i class="bi bi-bar-chart-line"></i>
                 </a>
                 
-                <button class="btn btn-sm btn-outline-info btn-edit-group me-1" data-id="${g.id_grupo}" data-name="${g.nombre_grupo}">
+                <button class="btn btn-sm btn-outline-info btn-edit-group me-1" data-id="${g.id_grupo}" data-name="${utils.escapeHTML(g.nombre_grupo)}">
                     <i class="bi bi-pencil"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-danger btn-delete-group" data-id="${g.id_grupo}" data-name="${g.nombre_grupo}">
+                <button class="btn btn-sm btn-outline-danger btn-delete-group" data-id="${g.id_grupo}" data-name="${utils.escapeHTML(g.nombre_grupo)}">
                     <i class="bi bi-trash"></i>
                 </button>
             </div>

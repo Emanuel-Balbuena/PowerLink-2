@@ -45,8 +45,8 @@ Deno.serve(async (req) => {
     community_status,
     community_joined_at,
     archivado,
-    grupos ( nombre_grupo ) 
-  `)
+    grupos ( nombre_grupo )
+    `)
       .eq('id_usuario_fk', user.id) // ¡La parte más importante!
       .order('fecha_registro', { ascending: false });
     if (dbError) {

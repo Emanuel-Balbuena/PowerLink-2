@@ -109,6 +109,70 @@ h6 {
   font-weight: 600;
 }
 
+/*--------------------------------------------------------------
+# Admin Panel & General Utilities
+--------------------------------------------------------------*/
+
+.admin-panel-icon {
+  color: var(--yellow-accent);
+  font-size: 2rem;
+  transform: translateY(-13px);
+}
+
+.table-admin {
+  color: var(--default-color);
+  background-color: var(--surface-color);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.table-admin th {
+  background-color: rgba(0, 0, 0, 0.2) !important;
+  color: var(--heading-color) !important;
+  font-weight: 600;
+  border-bottom: 2px solid var(--accent-color) !important;
+}
+
+.table-admin td {
+  vertical-align: middle;
+  background-color: var(--surface-color) !important;
+  color: var(--default-color) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.table-admin tbody tr:hover td {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.led-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.led-online {
+  background-color: #00ff00;
+  box-shadow: 0 0 8px #00ff00;
+}
+
+.led-offline {
+  background-color: #dc3545;
+  box-shadow: none;
+}
+
+.text-subtle {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.device-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  background-color: rgba(255, 193, 7, 0.15);
+  color: var(--warning);
+}
+
+
 .php-email-form .sent-message {
   display: none;
   color: #ffffff;
